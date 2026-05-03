@@ -1,0 +1,385 @@
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+}
+
+.seat-layout {
+	display: flex;
+	width: 100vw;
+	height: 100vh;
+	overflow: hidden;
+	box-sizing: border-box;
+}
+
+
+.seat-content {
+	padding: 24px;
+	background-color: #f0f2f5;
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+	flex: 1;
+	min-width: 0;
+}
+
+.seat-page-toolbar {
+	display: flex;
+	gap: 12px;
+	justify-content: flex-end;
+	margin-bottom: 12px;
+}
+
+.seat-canvas-card {
+	flex: 1;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	overflow: hidden;
+}
+
+.seat-canvas-svg {
+	width: 100%;
+	height: 100%;
+	background-color: #fff;
+	display: block;
+}
+
+.seat-canvas-rect {
+	stroke: #d9d9d9;
+	stroke-dasharray: 5, 5;
+}
+
+.seat-canvas-text {
+	fill: #bfbfbf;
+	font-size: 16px;
+}
+
+.seat-sider {
+	border-left: 1px solid #f0f0f0;
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	box-sizing: border-box;
+	position: relative;
+	flex: 0 0 auto;
+	overflow: hidden;
+	
+}
+
+.seat-sider-shell {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	box-sizing: border-box;
+}
+
+.seat-sider-content {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	box-sizing: border-box;
+}
+
+.seat-panel {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.seat-panel-body {
+	height: 100%;
+	min-height: 0;
+}
+
+.seat-create-scroll {
+	flex: 1;
+	overflow-y: auto;
+	padding-right: 4px;
+}
+
+.seat-create-button {
+	height: 80px;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	border-radius: 8px;
+}
+
+.seat-create-icon {
+	font-size: 20px;
+	margin-bottom: 8px;
+}
+
+.seat-list-scroll {
+	flex: 1;
+	overflow-y: auto;
+	border: 1px solid #f0f0f0;
+	border-radius: 8px;
+	background-color: #fafafa;
+	display: flex;
+	flex-direction: column;
+}
+
+
+.seat-list-item-meta {
+	font-size: 12px;
+	margin-left: 8px;
+}
+
+.seat-modal .ant-modal-body {
+	max-height: calc(100vh - 200px);
+	overflow-y: auto;
+	padding-right: 8px;
+}
+
+.seat-form {
+	margin-top: 16px;
+}
+
+.seat-form-row {
+	display: flex;
+	gap: 16px;
+}
+
+.seat-color-input {
+	width: 60px;
+	padding: 0;
+	cursor: pointer;
+	border: none;
+	background-color: transparent;
+}
+
+.seat-placeholder-panel {
+	margin-top: 16px;
+	padding: 12px;
+	background-color: #f5f5f5;
+	border-radius: 4px;
+}
+
+.seat-tabs {
+	height: 100%;
+}
+
+.seat-tabs .ant-tabs-nav {
+	margin: 0;
+	padding: 16px 16px 16px 0;
+	height: 100%;
+	transition: padding 220ms ease;
+}
+
+.seat-tabs .ant-tabs-nav-wrap,
+.seat-tabs .ant-tabs-nav-list {
+	height: 100%;
+}
+
+.seat-tabs .ant-tabs-nav-list {
+	justify-content: flex-start;
+}
+
+.seat-tabs .ant-tabs-content-holder {
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+	padding: 16px 0 16px 16px;
+	transition: opacity 180ms ease, padding 220ms ease;
+}
+
+.seat-tabs .ant-tabs-content,
+.seat-tabs .ant-tabs-tabpane {
+	height: 100%;
+}
+
+.seat-tabs .ant-tabs-tabpane {
+	overflow: hidden;
+}
+
+.seat-tabs .ant-tabs-nav .ant-tabs-tab {
+	margin: 0 0 8px 0;
+}
+
+.seat-tabs .ant-tabs-nav .ant-tabs-tab:last-child {
+	margin-bottom: 0;
+}
+
+.seat-tabs .ant-tabs-tab-btn {
+	display: inline-flex;
+	align-items: center;
+}
+
+.seat-tabs-icon-only .seat-tab-text {
+	display: none;
+}
+
+.seat-sider-collapsed .seat-tabs .ant-tabs-content-holder {
+	opacity: 0;
+	pointer-events: none;
+	padding: 16px 0 16px 0;
+}
+
+.seat-sider-collapsed .seat-tabs .ant-tabs-nav {
+	padding: 16px 10px;
+}
+
+.seat-sider-collapsed .seat-tabs .ant-tabs-nav .ant-tabs-tab {
+	padding-inline: 0;
+	justify-content: center;
+}
+
+.seat-sider-collapsed .seat-tabs .ant-tabs-nav .ant-tabs-tab-btn {
+	justify-content: center;
+}
+
+.seat-sider-toolbar {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	align-items: stretch;
+	margin-bottom: 12px;
+	padding-right: 2px;
+}
+
+.seat-toolbar-button {
+	min-width: 32px;
+	height: 32px;
+	padding: 0 8px;
+	border-radius: 8px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+
+.seat-toolbar-button i {
+	font-size: 14px;
+}
+
+.seat-toolbar-button-text {
+	font-size: 12px;
+	white-space: nowrap;
+}
+
+.seat-tabs-icon-only .seat-toolbar-button-text {
+	display: none;
+}
+
+.seat-tabs-icon-only .seat-toolbar-button {
+	min-width: 32px;
+	padding: 0;
+}
+
+.seat-tab-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.seat-resize-handle {
+	position: absolute;
+	left: -4px;
+	top: 0;
+	width: 8px;
+	height: 100%;
+	cursor: col-resize;
+	z-index: 2;
+	background: transparent;
+}
+
+.seat-resize-handle:hover {
+	background: rgba(22, 119, 255, 0.08);
+}
+
+.seat-sider-collapsed .seat-resize-handle {
+	display: none;
+}
+
+/* TreeView 样式 */
+.seat-tree-node {
+	transition: background-color 0.15s ease;
+	border-radius: 4px;
+}
+
+.seat-tree-node:hover {
+	background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* 覆盖Ant Design Tree默认样式，适配侧边栏 */
+.seat-list-scroll .ant-tree {
+	background: transparent;
+	font-size: 13px;
+}
+
+.seat-list-scroll .ant-tree-treenode {
+	padding: 2px 0;
+	width: 100%;
+}
+
+.seat-list-scroll .ant-tree-node-content-wrapper {
+	width: 100%;
+	overflow: hidden;
+	background: transparent !important;
+	padding: 0 !important;
+	min-height: unset !important;
+	line-height: normal !important;
+}
+
+.seat-list-scroll .ant-tree-node-content-wrapper:hover {
+	background-color: transparent !important;
+}
+
+.seat-list-scroll .ant-tree-node-selected {
+	background-color: rgba(24, 144, 255, 0.08) !important;
+	border-radius: 4px;
+}
+
+.seat-list-scroll .ant-tree-switcher {
+	width: 20px;
+	height: auto;
+	line-height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.seat-list-scroll .ant-tree-indent-unit {
+	width: 16px;
+}
+
+.seat-list-scroll .ant-tree-treenode-switcher-open .ant-tree-switcher,
+.seat-list-scroll .ant-tree-treenode-switcher-close .ant-tree-switcher {
+	align-self: flex-start;
+}
+
+/* 列表项hover效果 */
+.seat-list-item {
+	cursor: pointer;
+	border-bottom: 1px solid #f0f0f0;
+	transition: background-color 0.15s ease;
+	border-radius: 4px;
+}
+
+.seat-list-item:hover {
+	background-color: rgba(24, 144, 255, 0.04);
+}
+
+.custom-scroll::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+	background-color: rgba(0, 0, 0, 0.15);
+	border-radius: 4px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.custom-scroll:hover::-webkit-scrollbar-thumb {
+	background-color: rgba(0, 0, 0, 0.3);
+}
