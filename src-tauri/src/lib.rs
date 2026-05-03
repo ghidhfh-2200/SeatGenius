@@ -13,8 +13,6 @@ mod read_env_config;
 mod init_db;
 #[path = "database.rs"]
 mod database;
-#[path = "reward_calculator.rs"]
-mod reward_calculator;
 #[path = "evolution_bridge.rs"]
 mod evolution_bridge;
 #[path = "profile_manager.rs"]
@@ -22,19 +20,9 @@ mod profile_manager;
 #[path = "seat_table_export.rs"]
 mod seat_table_export;
 
-use reward_calculator::{RewardCalcRequest, RewardCalcResult};
-
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-/// 计算遗传算法的奖励值
-/// 接收前端传入的奖励配置、学生信息、座位布局，
-/// 返回每个学生的位置奖励、因子奖励、相邻关系奖励和总奖励。
-#[tauri::command]
-fn calculate_rewards(payload: RewardCalcRequest) -> RewardCalcResult {
-    reward_calculator::calculate_rewards(&payload)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -53,7 +41,6 @@ pub fn run() {
             database::save_namelist,
             database::get_namelists,
             database::load_namelist_content,
-            calculate_rewards,
             evolution_bridge::start_evolution,
             evolution_bridge::get_evolution_status,
             evolution_bridge::stop_evolution,

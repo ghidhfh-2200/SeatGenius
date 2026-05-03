@@ -17,8 +17,6 @@ import {
     Select,
     Slider,
     Space,
-    Statistic,
-    Table,
     Tag,
     Tooltip,
     Typography,
@@ -27,7 +25,7 @@ import {
 import {
     AimOutlined,
     ApartmentOutlined,
-    CalculatorOutlined,
+    ArrowLeftOutlined,
     CheckCircleFilled,
     DeleteOutlined,
     EditOutlined,
@@ -53,7 +51,6 @@ import {
 } from '../../api/makeSeatList/factorUtils';
 import {
     buildRewardConfigEntry,
-    buildRewardCalculationPayload,
     buildEvolutionPayload,
     buildProfileData,
     applyLoadedProfileData,
@@ -222,39 +219,6 @@ const FactorLabelManagement = ({ names = [] }) => {
         message.success('奖励配置已保存');
     };
 
-    // ========== 奖励值计算结果 ==========
-    const [calcResultOpen, setCalcResultOpen] = useState(false);
-    const [calcResults, setCalcResults] = useState(null);
-    const [calcLoading, setCalcLoading] = useState(false);
-
-    // 调用 Rust 算法计算奖励值
-    const handleCalculateRewards = async () => {
-        // 查找奖励配置
-        const rewardConfig = conditions.find(c => c._isRewardConfig);
-        if (!rewardConfig) {
-            message.warning('请先保存奖励配置（位置/因子/相邻关系）');
-            return;
-        }
-        if (personalAttrs.length === 0) {
-            message.warning('请先配置个人属性数据');
-            return;
-        }
-
-        setCalcLoading(true);
-        try {
-            const payload = buildRewardCalculationPayload(rewardConfig, personalAttrs);
-
-            const result = await invoke('calculate_rewards', { payload });
-            setCalcResults(result);
-            setCalcResultOpen(true);
-        } catch (err) {
-            console.error('计算奖励值失败', err);
-            message.error('计算奖励值失败：' + String(err));
-        } finally {
-            setCalcLoading(false);
-        }
-    };
-
     const handleStartEvolution = async (classroom) => {
         const rewardConfig = conditions.find(c => c._isRewardConfig);
         if (!rewardConfig) {
@@ -389,8 +353,6 @@ const FactorLabelManagement = ({ names = [] }) => {
             removeCondition={removeCondition}
             setEditorVisible={setEditorVisible}
             setConditionSettingsOpen={setConditionSettingsOpen}
-            handleCalculateRewards={handleCalculateRewards}
-            calcLoading={calcLoading}
             getConfigStats={getConfigStats}
             setStartEvolutionOpen={setStartEvolutionOpen}
             canStartEvolution={personalAttrs.length > 0 && conditions.some(c => c._isRewardConfig)}
@@ -428,131 +390,6 @@ const FactorLabelManagement = ({ names = [] }) => {
                 onCancel={() => setStartEvolutionOpen(false)}
                 onOk={handleStartEvolution}
             />
-
-            {/* ========= 奖励值计算结果弹窗 ========= */}
-            <Modal
-                title={
-                    <Space>
-                        <CalculatorOutlined />
-                        <span>奖励值计算结果</span>
-                    </Space>
-                }
-                open={calcResultOpen}
-                onCancel={() => setCalcResultOpen(false)}
-                width={800}
-                style={{ top: 20 }}
-                styles={{ body: { maxHeight: 'calc(100vh - 180px)', overflow: 'hidden' } }}
-                footer={
-                    <Button onClick={() => setCalcResultOpen(false)}>关闭</Button>
-                }
-                destroyOnHidden
-            >
-                {calcResults ? (
-                    <div style={{ maxHeight: 'calc(100vh - 240px)', overflow: 'auto' }}>
-                        {/* 总体统计 */}
-                        <Card size="small" style={{ marginBottom: 12 }}>
-                            <Row gutter={16}>
-                                <Col span={8}>
-                                    <Statistic
-                                        title="总人数"
-                                        value={calcResults.total_students || 0}
-                                        prefix={<UserOutlined />}
-                                    />
-                                </Col>
-                                <Col span={8}>
-                                    <Statistic
-                                        title="平均奖励值"
-                                        value={(calcResults.avg_reward || 0).toFixed(4)}
-                                        precision={4}
-                                        valueStyle={{ color: '#1677ff' }}
-                                    />
-                                </Col>
-                                <Col span={8}>
-                                    <Statistic
-                                        title="总适应度"
-                                        value={(calcResults.total_fitness || 0).toFixed(4)}
-                                        precision={4}
-                                        valueStyle={{ color: '#52c41a' }}
-                                    />
-                                </Col>
-                            </Row>
-                        </Card>
-
-                        {/* 各分类奖励值统计 */}
-                        {calcResults.category_stats && (
-                            <Card size="small" title="分类奖励统计" style={{ marginBottom: 12 }}>
-                                <Row gutter={[16, 8]}>
-                                    {Object.entries(calcResults.category_stats).map(([key, val]) => (
-                                        <Col span={8} key={key}>
-                                            <Statistic
-                                                title={key}
-                                                value={typeof val === 'number' ? val.toFixed(4) : val}
-                                                precision={4}
-                                            />
-                                        </Col>
-                                    ))}
-                                </Row>
-                            </Card>
-                        )}
-
-                        {/* 个人奖励详情表格 */}
-                        {calcResults.student_rewards && calcResults.student_rewards.length > 0 && (
-                            <Card size="small" title="个人奖励详情">
-                                <Table
-                                    size="small"
-                                    bordered
-                                    dataSource={calcResults.student_rewards}
-                                    rowKey="name"
-                                    pagination={false}
-                                    scroll={{ y: 300 }}
-                                    columns={[
-                                        {
-                                            title: '姓名',
-                                            dataIndex: 'name',
-                                            key: 'name',
-                                            width: 100,
-                                            fixed: 'left',
-                                            render: (name) => <Text strong>{name}</Text>,
-                                        },
-                                        {
-                                            title: '位置奖励',
-                                            dataIndex: 'position_reward',
-                                            key: 'position_reward',
-                                            width: 100,
-                                            render: (val) => <Tag color="blue">{val?.toFixed(4)}</Tag>,
-                                        },
-                                        {
-                                            title: '因子奖励',
-                                            dataIndex: 'factor_reward',
-                                            key: 'factor_reward',
-                                            width: 100,
-                                            render: (val) => <Tag color="green">{val?.toFixed(4)}</Tag>,
-                                        },
-                                        {
-                                            title: '相邻关系奖励',
-                                            dataIndex: 'adjacency_reward',
-                                            key: 'adjacency_reward',
-                                            width: 110,
-                                            render: (val) => <Tag color="orange">{val?.toFixed(4)}</Tag>,
-                                        },
-                                        {
-                                            title: '总奖励值',
-                                            dataIndex: 'total_reward',
-                                            key: 'total_reward',
-                                            width: 100,
-                                            render: (val) => (
-                                                <Text strong style={{ color: '#f5222d' }}>{val?.toFixed(4)}</Text>
-                                            ),
-                                        },
-                                    ]}
-                                />
-                            </Card>
-                        )}
-                    </div>
-                ) : (
-                    <Empty description="暂无计算结果" />
-                )}
-            </Modal>
 
             <Modal
                 title="标签编辑器"
@@ -706,17 +543,6 @@ const FactorLabelManagement = ({ names = [] }) => {
                 centered
             >
                 <Space orientation="vertical" style={{ width: '100%' }}>
-                    <div style={{
-                        background: '#e6f4ff',
-                        border: '1px solid #91caff',
-                        borderRadius: 6,
-                        padding: '8px 12px',
-                        marginBottom: 8,
-                    }}>
-                        <Text type="secondary" style={{ fontSize: 13 }}>
-                            将当前所有配置（名单、个人属性、条件限制、奖励值、标签）保存为档案，方便日后快速加载复用。
-                        </Text>
-                    </div>
                     <div>
                         <Text strong>档案名称</Text>
                         <Input
@@ -754,18 +580,6 @@ const FactorLabelManagement = ({ names = [] }) => {
                 centered
                 width={600}
             >
-                <div style={{
-                    background: '#fff7e6',
-                    border: '1px solid #ffd591',
-                    borderRadius: 6,
-                    padding: '8px 12px',
-                    marginBottom: 12,
-                }}>
-                    <Text style={{ color: '#d46b08', fontSize: 13 }}>
-                        选择一个已保存的档案加载全部配置（名单、个人属性、条件限制、奖励值、标签）。
-                    </Text>
-                </div>
-
                 {profileList.length === 0 && !profileLoading ? (
                     <Empty description="暂无已保存的档案">
                         <Text type="secondary">请先使用「保存为档案」功能保存配置</Text>
@@ -850,8 +664,6 @@ const LayoutShell = ({
     removeCondition,
     setEditorVisible,
     setConditionSettingsOpen,
-    handleCalculateRewards,
-    calcLoading,
     getConfigStats,
     setStartEvolutionOpen,
     canStartEvolution,
@@ -868,9 +680,12 @@ const LayoutShell = ({
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexShrink: 0 }}>
-                <div>
-                    <Title level={4} style={{ margin: 0 }}>条件定义器</Title>
-                    <Text type="secondary">用于遗传算法前期准备：名单、个人属性、条件限制与标签库</Text>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <Button icon={<ArrowLeftOutlined />} onClick={() => window.history.back()}>返回</Button>
+                    <div>
+                        <Title level={4} style={{ margin: 0 }}>条件定义器</Title>
+                        <Text type="secondary">用于遗传算法前期准备：名单、个人属性、条件限制与标签库</Text>
+                    </div>
                 </div>
                 <Space>
                     <Button
@@ -884,14 +699,6 @@ const LayoutShell = ({
                         onClick={onLoadProfile}
                     >
                         从档案加载
-                    </Button>
-                    <Button
-                        icon={<CalculatorOutlined />}
-                        onClick={handleCalculateRewards}
-                        loading={calcLoading}
-                        disabled={!hasRewardConfig || personalAttrs.length === 0}
-                    >
-                        计算奖励值
                     </Button>
                     <Button icon={<SettingOutlined />} onClick={() => setEditorVisible(true)}>
                         标签编辑器

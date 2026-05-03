@@ -438,19 +438,6 @@ const ConditionSettingsModal = ({
     /** Tab 1：位置奖励 — 基于教室的座位权重设置 */
     const PositionRewardsTab = () => (
         <div>
-            <div style={{
-                background: '#fffbe6',
-                border: '1px solid #ffe58f',
-                borderRadius: 8,
-                padding: '8px 12px',
-                marginBottom: 16,
-            }}>
-                <Text type="warning">
-                    <strong>提示：</strong>先从下方选择存储的教室，系统将自动识别其中的座位。
-                    然后您可以为每个座位单独设置权重（0~1），值越高表示该座位在遗传算法中越受青睐。
-                </Text>
-            </div>
-
             {/* ===== 第一步：选择教室 ===== */}
             <Card
                 size="small"
@@ -662,19 +649,6 @@ const ConditionSettingsModal = ({
     /** Tab 2：个人因子奖励 */
     const FactorRewardsTab = () => (
         <div>
-            <div style={{
-                background: '#f6ffed',
-                border: '1px solid #b7eb8f',
-                borderRadius: 8,
-                padding: '8px 12px',
-                marginBottom: 16,
-            }}>
-                <Text style={{ color: '#52c41a' }}>
-                    <strong>说明：</strong>根据每个人的个人属性因子（身高、性别、社交活跃度等）的取值区间设置奖励值。
-                    遗传算法将根据每个人在该因子上的值匹配对应区间，赋予相应的奖励分。
-                </Text>
-            </div>
-
             <Row gutter={16}>
                 {/* 左侧：因子选择 */}
                 <Col span={8}>
@@ -881,19 +855,6 @@ const ConditionSettingsModal = ({
     /** Tab 3：相邻关系奖励 */
     const AdjacencyRewardsTab = () => (
         <div>
-            <div style={{
-                background: '#fff7e6',
-                border: '1px solid #ffd591',
-                borderRadius: 8,
-                padding: '8px 12px',
-                marginBottom: 16,
-            }}>
-                <Text style={{ color: '#d46b08' }}>
-                    <strong>说明：</strong>根据座位相邻关系（同桌/前后排）的匹配程度设置奖励值。
-                    遗传算法将评估相邻两人的属性接近度，并根据此处设置的规则赋予奖励分。
-                </Text>
-            </div>
-
             {ADJACENCY_TYPES.map(adjType => (
                 <Card
                     key={adjType.key}

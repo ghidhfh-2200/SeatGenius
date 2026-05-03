@@ -18,9 +18,6 @@ import {
     Select,
     Slider,
     Space,
-    Statistic,
-    Table,
-    Tabs,
     Tag,
     Tooltip,
     Typography,
@@ -29,12 +26,13 @@ import {
 import {
     AimOutlined,
     ApartmentOutlined,
+    ArrowLeftOutlined,
     CheckCircleFilled,
     DeleteOutlined,
     ExportOutlined,
+    CalculatorOutlined,
     InboxOutlined,
     PlayCircleOutlined,
-    CalculatorOutlined,
     FolderOpenOutlined,
     ReloadOutlined,
     SaveOutlined,
@@ -48,7 +46,6 @@ import StartEvolutionModal from '../components/MakeSeatList/StartEvolutionModal'
 import SaveAsModal from '../components/UploadStudentName/SaveAsModal';
 import SplitPane from '../components/SplitPane';
 import LoadNamelistModal from '../components/SeatPlanEditor/LoadNamelistModal';
-import CalcResultModal from '../components/SeatPlanEditor/CalcResultModal';
 import LabelEditorModal from '../components/SeatPlanEditor/LabelEditorModal';
 import SaveProfileModal from '../components/SeatPlanEditor/SaveProfileModal';
 import LoadProfileModal from '../components/SeatPlanEditor/LoadProfileModal';
@@ -63,7 +60,6 @@ import {
 } from '../api/makeSeatList/factorUtils';
 import {
     buildRewardConfigEntry,
-    buildRewardCalculationPayload,
     buildEvolutionPayload,
     buildProfileData,
     applyLoadedProfileData,
@@ -118,11 +114,6 @@ const SeatPlanEditor = () => {
     const [profileList, setProfileList] = useState([]);
     const [profileLoading, setProfileLoading] = useState(false);
     const [profileSaving, setProfileSaving] = useState(false);
-
-    // ========== 奖励值计算 ==========
-    const [calcResultOpen, setCalcResultOpen] = useState(false);
-    const [calcResults, setCalcResults] = useState(null);
-    const [calcLoading, setCalcLoading] = useState(false);
 
     // ========== 上传配置 ==========
     const uploadProps = {
@@ -305,31 +296,6 @@ const SeatPlanEditor = () => {
         message.success('奖励配置已保存');
     };
 
-    // ========== 奖励值计算 ==========
-    const handleCalculateRewards = async () => {
-        const rewardConfig = conditions.find(c => c._isRewardConfig);
-        if (!rewardConfig) {
-            message.warning('请先保存奖励配置（位置/因子/相邻关系）');
-            return;
-        }
-        if (personalAttrs.length === 0) {
-            message.warning('请先配置个人属性数据');
-            return;
-        }
-        setCalcLoading(true);
-        try {
-            const payload = buildRewardCalculationPayload(rewardConfig, personalAttrs);
-            const result = await invoke('calculate_rewards', { payload });
-            setCalcResults(result);
-            setCalcResultOpen(true);
-        } catch (err) {
-            console.error('计算奖励值失败', err);
-            message.error('计算奖励值失败：' + String(err));
-        } finally {
-            setCalcLoading(false);
-        }
-    };
-
     // ========== 开始演化 ==========
     const handleStartEvolution = async (classroom) => {
         const rewardConfig = conditions.find(c => c._isRewardConfig);
@@ -483,9 +449,12 @@ const SeatPlanEditor = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}>
                     {/* 顶部标题栏 */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexShrink: 0 }}>
-                        <div>
-                            <Title level={4} style={{ margin: 0 }}>排座方案编辑器</Title>
-                            <Text type="secondary">上传名单 → 配置个人属性 → 设置奖励条件 → 开始演化排座</Text>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/')}>返回</Button>
+                            <div>
+                                <Title level={4} style={{ margin: 0 }}>排座方案编辑器</Title>
+                                <Text type="secondary">上传名单 → 配置个人属性 → 设置奖励条件 → 开始演化排座</Text>
+                            </div>
                         </div>
                         <Space>
                             <Button
@@ -514,15 +483,6 @@ const SeatPlanEditor = () => {
                                 title={evolutionRunning ? '已有演化任务正在运行' : '开始演化'}
                             >
                                 开始演化
-                            </Button>
-                            <Button
-                                icon={<CalculatorOutlined />}
-                                type="primary"
-                                onClick={handleCalculateRewards}
-                                loading={calcLoading}
-                                disabled={!hasRewardConfig || personalAttrs.length === 0}
-                            >
-                                计算奖励值
                             </Button>
                             <Button type="primary" icon={<SettingOutlined />} onClick={() => setEditorVisible(true)}>
                                 标签编辑器
@@ -568,12 +528,15 @@ const SeatPlanEditor = () => {
                                                 >
                                                     另存为
                                                 </Button>
-                                                <Button
-                                                    size="small"
-                                                    onClick={() => { setNames([]); setFileList([]); message.info('已清除名单'); }}
+                                                <Popconfirm
+                                                    title="确认清除名单？"
+                                                    description="清除后所有名单数据将丢失，此操作不可撤销。"
+                                                    onConfirm={() => { setNames([]); setFileList([]); message.info('已清除名单'); }}
                                                 >
-                                                    清除
-                                                </Button>
+                                                    <Button size="small" danger>
+                                                        清除
+                                                    </Button>
+                                                </Popconfirm>
                                             </>
                                         )}
                                     </Space>
@@ -838,12 +801,6 @@ const SeatPlanEditor = () => {
                     loading={startingEvolution}
                     onCancel={() => setStartEvolutionOpen(false)}
                     onOk={handleStartEvolution}
-                />
-
-                <CalcResultModal
-                    open={calcResultOpen}
-                    calcResults={calcResults}
-                    onCancel={() => setCalcResultOpen(false)}
                 />
 
                 <LabelEditorModal

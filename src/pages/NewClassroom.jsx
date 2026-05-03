@@ -7,6 +7,7 @@ import "./NewClassroom.css";
 import CreatePanel from "../components/EditSeatTable/CreatePanel";
 import EditComponentModal from "../components/EditSeatTable/EditComponentModal";
 import ExportModal from "../components/EditSeatTable/ExportModal";
+import SplitPane from "../components/SplitPane";
 import { showDeleteSelectedConfirm, showIdLogsInfo, showModeSwitchConfirm } from "../components/NewClassroom/modalHelpers.jsx";
 import { renderSeatElements } from "../api/newclassroom/renderSvg.jsx";
 import { normalizeClassroomPayload } from "../api/newclassroom/ClassroomLoader.js";
@@ -794,44 +795,51 @@ const NewClassroom = () => {
 
 const panelItems = [
 {
-key: "create",
-label: (
-    <span className="seat-tab-label">
-        <i className="fas fa-plus" />
-        <span className="seat-tab-text">新建组件</span>
-    </span>
-),
-children: <CreatePanel onCreate={handleCreate} mode={mode} onModeChange={handleModeChange} />
+    key: "create",
+    label: (
+        <span className="seat-tab-label">
+            <i className="fas fa-plus" />
+            <span className="seat-tab-text">新建组件</span>
+        </span>
+    ),
+    children: <CreatePanel onCreate={handleCreate} mode={mode} onModeChange={handleModeChange} />
 },
 {
-key: "list",
-label: (
-    <span className="seat-tab-label">
-        <i className="fas fa-list-ul" />
-        <span className="seat-tab-text">对象列表</span>
-    </span>
-),
-children: renderObjectListPanel()
+    key: "list",
+    label: (
+        <span className="seat-tab-label">
+            <i className="fas fa-list-ul" />
+            <span className="seat-tab-text">对象列表</span>
+        </span>
+    ),
+    children: renderObjectListPanel()
 }
 ];
 
+const renderPanelContent = () => {
+    if (activePanel === 'create') {
+        return <CreatePanel onCreate={handleCreate} mode={mode} onModeChange={handleModeChange} />;
+    }
+    return renderObjectListPanel();
+};
+
 return (
-<Layout className="seat-layout">
-<Content className="seat-content">
-    <div className="seat-page-toolbar">
-        <Button onClick={handleOpenExport}>导出</Button>
-        <div style={{ display: 'flex', alignItems: 'center', marginLeft: 16 }}>
-            <span style={{ marginRight: 8 }}>画布宽度:</span>
-            <Input
-                type="number"
-                value={canvasWidth}
-                onChange={(e) => setCanvasWidth(Number(e.target.value))}
-                style={{ width: 80 }}
-                step={100}
-            />
-        </div>
-        <Button onClick={() => navigate('/')} style={{ marginLeft: "auto" }}>返回主页</Button>
-    </div>
+    <Layout className="seat-layout">
+        <Content className="seat-content">
+            <div className="seat-page-toolbar">
+                <Button onClick={() => navigate('/')}>返回主页</Button>
+                <div style={{ display: 'flex', alignItems: 'center', marginLeft: 16 }}>
+                    <span style={{ marginRight: 8 }}>画布宽度:</span>
+                    <Input
+                        type="number"
+                        value={canvasWidth}
+                        onChange={(e) => setCanvasWidth(Number(e.target.value))}
+                        style={{ width: 80 }}
+                        step={100}
+                    />
+                </div>
+                <Button onClick={handleOpenExport} style={{ marginLeft: "auto" }}>导出</Button>
+            </div>
     <Card
         className="seat-canvas-card"
         styles={{ body: { width: "100%", height: "100%", display: "flex", padding: 0, position: "relative" } }}
@@ -915,44 +923,88 @@ return (
             {!isPanelCollapsed && (
                 <div className="seat-resize-handle" onMouseDown={handleResizeMouseDown} />
             )}
-            <Tabs
-                className={`seat-tabs ${isIconOnly ? "seat-tabs-icon-only" : ""}`}
-                tabPlacement="right"
-                activeKey={activePanel}
-                onChange={setActivePanel}
-                onTabClick={() => {
-                    if (isPanelCollapsed) {
-                        setIsPanelCollapsed(false);
-                    }
-                }}
-                items={panelItems}
-                tabBarExtraContent={{
-                    right: (
-                        <div className="seat-sider-toolbar">
-                            <Button
-                                type="text"
-                                size="small"
-                                className="seat-toolbar-button"
-                                onClick={toggleCompactTabs}
-                                aria-label={isCompactTabs ? "恢复面板文字" : "仅显示面板图标"}
-                            >
-                                <i className={`fas ${isCompactTabs ? "fa-eye" : "fa-eye-slash"}`} />
-                                <span className="seat-toolbar-button-text">{isCompactTabs ? "显示文字" : "仅图标"}</span>
-                            </Button>
-                            <Button
-                                type="text"
-                                size="small"
-                                className="seat-toolbar-button"
-                                onClick={togglePanelCollapsed}
-                                aria-label={isPanelCollapsed ? "展开面板" : "收起面板"}
-                            >
-                                <i className={`fas ${isPanelCollapsed ? "fa-chevron-left" : "fa-chevron-right"}`} />
-                                <span className="seat-toolbar-button-text">{isPanelCollapsed ? "展开面板" : "收起面板"}</span>
-                            </Button>
-                        </div>
-                    )
-                }}
-            />
+            {isPanelCollapsed ? (
+                <Tabs
+                    className={`seat-tabs ${isIconOnly ? "seat-tabs-icon-only" : ""}`}
+                    tabPlacement="right"
+                    activeKey={activePanel}
+                    onChange={setActivePanel}
+                    onTabClick={() => {
+                        if (isPanelCollapsed) {
+                            setIsPanelCollapsed(false);
+                        }
+                    }}
+                    items={panelItems}
+                    tabBarExtraContent={{
+                        right: (
+                            <div className="seat-sider-toolbar">
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    className="seat-toolbar-button"
+                                    onClick={toggleCompactTabs}
+                                    aria-label={isCompactTabs ? "恢复面板文字" : "仅显示面板图标"}
+                                >
+                                    <i className={`fas ${isCompactTabs ? "fa-eye" : "fa-eye-slash"}`} />
+                                    <span className="seat-toolbar-button-text">{isCompactTabs ? "显示文字" : "仅图标"}</span>
+                                </Button>
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    className="seat-toolbar-button"
+                                    onClick={togglePanelCollapsed}
+                                    aria-label={isPanelCollapsed ? "展开面板" : "收起面板"}
+                                >
+                                    <i className={`fas ${isPanelCollapsed ? "fa-chevron-left" : "fa-chevron-right"}`} />
+                                    <span className="seat-toolbar-button-text">{isPanelCollapsed ? "展开面板" : "收起面板"}</span>
+                                </Button>
+                            </div>
+                        )
+                    }}
+                />
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 8px', flexShrink: 0 }}>
+                        <Button
+                            type="text"
+                            size="small"
+                            className="seat-toolbar-button"
+                            onClick={toggleCompactTabs}
+                            aria-label={isCompactTabs ? "恢复面板文字" : "仅显示面板图标"}
+                        >
+                            <i className={`fas ${isCompactTabs ? "fa-eye" : "fa-eye-slash"}`} />
+                            <span className="seat-toolbar-button-text">{isCompactTabs ? "显示文字" : "仅图标"}</span>
+                        </Button>
+                        <Button
+                            type="text"
+                            size="small"
+                            className="seat-toolbar-button"
+                            onClick={togglePanelCollapsed}
+                            aria-label={isPanelCollapsed ? "展开面板" : "收起面板"}
+                        >
+                            <i className={`fas ${isPanelCollapsed ? "fa-chevron-left" : "fa-chevron-right"}`} />
+                            <span className="seat-toolbar-button-text">{isPanelCollapsed ? "展开面板" : "收起面板"}</span>
+                        </Button>
+                    </div>
+                    <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+                        <SplitPane
+                            defaultRatio={0.5}
+                            minTopHeight={100}
+                            minBottomHeight={100}
+                            top={
+                                <div style={{ height: '100%', overflow: 'auto', padding: '8px' }}>
+                                    <CreatePanel onCreate={handleCreate} mode={mode} onModeChange={handleModeChange} />
+                                </div>
+                            }
+                            bottom={
+                                <div style={{ height: '100%', overflow: 'auto', padding: '8px' }}>
+                                    {renderObjectListPanel()}
+                                </div>
+                            }
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     </div>
 </Sider>

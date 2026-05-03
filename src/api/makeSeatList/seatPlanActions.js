@@ -14,31 +14,6 @@ export const buildRewardConfigEntry = (data) => ({
     classroomSgid: data?.classroomSgid,
 });
 
-export const buildRewardCalculationPayload = (rewardConfig, personalAttrs = []) => ({
-    reward_config: {
-        position_rewards: rewardConfig?.positionRewards || {},
-        special_rewards: rewardConfig?.specialRewards || {},
-        factor_rewards: rewardConfig?.factorRewards || {},
-        adjacency_rewards: rewardConfig?.adjacencyRewards || {},
-        seat_rewards: rewardConfig?.seatRewards || {},
-        custom_conditions: (rewardConfig?.customConditions || []).map((item) => ({
-            name: item.name,
-            reward: item.reward,
-        })),
-    },
-    students: personalAttrs.map((person) => ({
-        name: person.name,
-        factors: person.factors || {},
-    })),
-    seat_layout: (() => {
-        const seatRewards = rewardConfig?.seatRewards || {};
-        const totalSeats = Object.keys(seatRewards).length;
-        return totalSeats > 0
-            ? { total_seats: totalSeats }
-            : { rows: 5, cols: 3, total_seats: 15 };
-    })(),
-});
-
 export const buildEvolutionPayload = ({
     classroom,
     names = [],
