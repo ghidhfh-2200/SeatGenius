@@ -15,7 +15,7 @@ struct EvolutionProgressCallback {
 
 #[pymethods]
 impl EvolutionProgressCallback {
-    #[pyo3(name = "__call__")]
+    #[pyo3(name = "__call__", signature = (generation, best_fitness, message=None))]
     fn call(&self, generation: u32, best_fitness: f64, message: Option<String>) {
         let total = self.generations.max(1);
         let gen = generation.min(total);
