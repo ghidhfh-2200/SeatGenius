@@ -13,6 +13,7 @@ const ExportModal = ({
         <Modal
             title="导出教室"
             open={open}
+            forceRender
             onOk={onOk}
             onCancel={onCancel}
             okText="导出"

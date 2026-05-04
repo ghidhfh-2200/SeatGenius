@@ -795,6 +795,7 @@ const ConditionSettingsModal = ({
             <Modal
                 title={editingFactorRange !== null ? '编辑值区间' : '添加值区间'}
                 open={factorRangeModalOpen}
+                forceRender
                 onCancel={() => {
                     setFactorRangeModalOpen(false);
                     setEditingFactorRange(null);
@@ -955,6 +956,7 @@ const ConditionSettingsModal = ({
                     </Space>
                 }
                 open={open}
+                forceRender
                 onCancel={onCancel}
                 width={900}
                 style={{ top: 20 }}

@@ -57,6 +57,7 @@ const StartEvolutionModal = ({
         <Modal
             title="确认开始演化"
             open={open}
+            forceRender
             onCancel={onCancel}
             onOk={handleOk}
             okText="确认开始"

@@ -20,6 +20,7 @@ const SmallGroupEditModal = ({ visible, onCancel, onSave, initialValues, isCreat
         <Modal
             title={isCreating ? "添加小组" : "编辑小组"}
             open={visible}
+            forceRender
             onOk={() => {
                 form.validateFields().then(values => {
                     onSave(values);
@@ -375,6 +376,7 @@ const EditComponentModal = ({
         <Modal
             title={`${typeNames[selectedItem?.type] || "组件"}属性编辑`}
             open={isModalVisible}
+            forceRender
             onOk={() => {
                 form.validateFields().then(values => {
                     if (isDraftBigGroup) {

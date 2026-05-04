@@ -31,6 +31,7 @@ const LabelEditorModal = ({
         <Modal
             title="标签编辑器"
             open={open}
+            forceRender
             onCancel={onClose}
             footer={null}
             width="calc(100vw - 32px)"

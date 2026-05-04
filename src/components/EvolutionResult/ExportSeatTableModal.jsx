@@ -14,6 +14,7 @@ const ExportSeatTableModal = ({
         <Modal
             title="导出座位表"
             open={open}
+            forceRender
             onOk={onOk}
             onCancel={onCancel}
             confirmLoading={exporting}

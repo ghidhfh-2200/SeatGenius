@@ -23,6 +23,7 @@ const SaveProfileModal = ({
                 </Space>
             )}
             open={open}
+            forceRender
             onCancel={onCancel}
             onOk={onSave}
             okText="保存"

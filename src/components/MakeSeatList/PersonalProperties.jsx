@@ -182,6 +182,7 @@ const PersonalProperties = ({
                     </Space>
                 }
                 open={open}
+                forceRender
                 onCancel={() => {
                     // 不保存直接关闭
                     onCancel?.();
@@ -370,6 +371,7 @@ const PersonalProperties = ({
             <Modal
                 title="从标签加载权重"
                 open={labelLoadOpen}
+                forceRender
                 onCancel={() => setLabelLoadOpen(false)}
                 footer={null}
                 width={500}

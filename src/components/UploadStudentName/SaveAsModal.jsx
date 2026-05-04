@@ -26,6 +26,7 @@ const SaveAsModal = ({
         <Modal
             title="另存为"
             open={open}
+            forceRender
             onCancel={onClose}
             onOk={handleOk}
         >

@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import useRafState from "../hooks/useRafState";
+import useRafThrottle from "../hooks/useRafThrottle";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Layout, Typography, Card, Button, Tabs, Checkbox, Input, message, Tree, Tag } from "antd";
 import { invoke } from "@tauri-apps/api/core";
@@ -92,7 +94,7 @@ const NewClassroom = () => {
     const location = useLocation();
     const [activePanel, setActivePanel] = useState('create');
     const [mode, setMode] = useState('classic');
-    const [panelWidth, setPanelWidth] = useState(() => Math.round(window.innerWidth * 0.4));
+    const [panelWidth, setPanelWidth] = useRafState(() => Math.round(window.innerWidth * 0.4));
     const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
     const [isCompactTabs, setIsCompactTabs] = useState(false);
     const [elements, setElements] = useState([]);
@@ -244,11 +246,11 @@ const NewClassroom = () => {
         };
     }, [location.state]);
 
-    const handleSvgMouseMove = (e) => {
+    const handleSvgMouseMove = useRafThrottle((clientX, clientY) => {
         if (!svgRef.current || !crosshairHRef.current || !crosshairVRef.current || !coordsRef.current || !crosshairGroupRef.current) return;
         const pt = svgRef.current.createSVGPoint();
-        pt.x = e.clientX;
-        pt.y = e.clientY;
+        pt.x = clientX;
+        pt.y = clientY;
         const svgP = pt.matrixTransform(svgRef.current.getScreenCTM().inverse());
 
         const x = Math.round(svgP.x);
@@ -263,7 +265,7 @@ const NewClassroom = () => {
 
         crosshairGroupRef.current.style.display = "block";
         coordsRef.current.style.display = "block";
-    };
+    });
 
     const handleSvgMouseLeave = () => {
         if (!crosshairGroupRef.current || !coordsRef.current) return;
@@ -878,7 +880,7 @@ return (
                         <svg
                             key={canvasRenderKey}
                             ref={svgRef}
-                            onMouseMove={handleSvgMouseMove}
+                            onMouseMove={(e) => handleSvgMouseMove(e.clientX, e.clientY)}
                             onMouseLeave={handleSvgMouseLeave}
                             className="seat-canvas-svg"
                             xmlns="http://www.w3.org/2000/svg"

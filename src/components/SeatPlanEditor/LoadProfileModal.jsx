@@ -21,6 +21,7 @@ const LoadProfileModal = ({
                 </Space>
             )}
             open={open}
+            forceRender
             onCancel={onCancel}
             footer={null}
             destroyOnHidden

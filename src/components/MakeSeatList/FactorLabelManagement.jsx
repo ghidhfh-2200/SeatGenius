@@ -393,6 +393,7 @@ const FactorLabelManagement = ({ names = [] }) => {
             <Modal
                 title="标签编辑器"
                 open={editorVisible}
+                forceRender
                 onCancel={() => setEditorVisible(false)}
                 footer={null}
                 width="calc(100vw - 32px)"
@@ -530,6 +531,7 @@ const FactorLabelManagement = ({ names = [] }) => {
                     </Space>
                 }
                 open={saveProfileModalOpen}
+                forceRender
                 onCancel={() => {
                     setSaveProfileModalOpen(false);
                     setProfileName('');
@@ -573,6 +575,7 @@ const FactorLabelManagement = ({ names = [] }) => {
                     </Space>
                 }
                 open={loadProfileModalOpen}
+                forceRender
                 onCancel={() => setLoadProfileModalOpen(false)}
                 footer={null}
                 destroyOnHidden

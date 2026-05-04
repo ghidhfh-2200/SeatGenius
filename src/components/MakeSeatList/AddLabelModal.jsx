@@ -50,6 +50,7 @@ const AddLabelModal = ({
         <Modal
             title={title}
             open={open}
+            forceRender
             onCancel={() => {
                 form.resetFields();
                 onCancel?.();

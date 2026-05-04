@@ -1,4 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
+import useRafThrottle from '../hooks/useRafThrottle';
 
 /**
  * SplitPane — 可拖动的垂直分隔面板
@@ -34,13 +35,13 @@ const SplitPane = ({
         setIsDragging(true);
     }, []);
 
-    const handleMouseMove = useCallback((e) => {
+    const updateRatio = useRafThrottle((clientY) => {
         if (!isDragging || !containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
         const containerHeight = rect.height;
         if (containerHeight <= 0) return;
 
-        const offsetY = e.clientY - rect.top;
+        const offsetY = clientY - rect.top;
         let newRatio = offsetY / containerHeight;
 
         // 计算实际像素值，确保不低于最小高度
@@ -54,7 +55,11 @@ const SplitPane = ({
         }
 
         setRatio(Math.max(0, Math.min(1, newRatio)));
-    }, [isDragging, minTopHeight, minBottomHeight]);
+    });
+
+    const handleMouseMove = useCallback((e) => {
+        updateRatio(e.clientY);
+    }, [updateRatio]);
 
     const handleMouseUp = useCallback(() => {
         setIsDragging(false);
