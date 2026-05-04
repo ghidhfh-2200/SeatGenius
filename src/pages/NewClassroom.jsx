@@ -7,7 +7,7 @@ import "./NewClassroom.css";
 import CreatePanel from "../components/EditSeatTable/CreatePanel";
 import EditComponentModal from "../components/EditSeatTable/EditComponentModal";
 import ExportModal from "../components/EditSeatTable/ExportModal";
-import SplitPane from "../components/SplitPane";
+import FabricClassroomCanvas from "../components/NewClassroom/FabricClassroomCanvas";
 import { showDeleteSelectedConfirm, showIdLogsInfo, showModeSwitchConfirm } from "../components/NewClassroom/modalHelpers.jsx";
 import { renderSeatElements } from "../api/newclassroom/renderSvg.jsx";
 import { normalizeClassroomPayload } from "../api/newclassroom/ClassroomLoader.js";
@@ -117,6 +117,7 @@ const NewClassroom = () => {
     const idLogsRef = useRef([]);
 
     const svgRef = useRef(null);
+    const fabricCanvasRef = useRef(null);
     const crosshairHRef = useRef(null);
     const crosshairVRef = useRef(null);
     const coordsRef = useRef(null);
@@ -326,11 +327,16 @@ const NewClassroom = () => {
             name: `${TYPE_NAMES[type] || "组件"} (新)`,
             type: type,
             color: defaultColors[type] || "#000",
-            ...(!isSidePositional && !isClassicAutoPos ? { x: 0, y: 0 } : {}),
+            ...(!isSidePositional && !isClassicAutoPos && mode === "classic" ? { x: 0, y: 0 } : {}),
             ...(isSidePositional ? { side: "left", relativePos: 50 } : {}),
             ...(type !== "chair" && type !== "platform" && !isSidePositional && !isClassicAutoPos ? { width: 100, height: 50 } : {}),
             ...(type === "multimedia" ? { rotation: 0, side: "front", relativePos: 50 } : {}),
         };
+
+        if (mode !== "classic" && ["platform", "desk"].includes(type)) {
+            newItem.width = config[`${type.toUpperCase()}_WIDTH`] || FALLBACK_CONFIG[`${type.toUpperCase()}_WIDTH`];
+            newItem.height = config[`${type.toUpperCase()}_HEIGHT`] || FALLBACK_CONFIG[`${type.toUpperCase()}_HEIGHT`];
+        }
 
         if (type === "platform" && mode === "classic") {
             newItem.width = config.PLATFORM_WIDTH || FALLBACK_CONFIG.PLATFORM_WIDTH;
@@ -349,6 +355,12 @@ const NewClassroom = () => {
             delete newItem.rotation;
             delete newItem.side;
             delete newItem.relativePos;
+        }
+
+        if (mode !== "classic") {
+            setElements(prev => [...prev, newItem]);
+            setSelectedItem(newItem);
+            return;
         }
 
         if (type === "big_group") {
@@ -381,6 +393,10 @@ const NewClassroom = () => {
     };
 
     const handleModalOk = (values, extra = null) => {
+        if (!selectedItem) {
+            setIsModalVisible(false);
+            return;
+        }
         if (selectedItem?.type === 'big_group') {
             const existingBigGroup = elements.find(e => e.id === selectedItem.id && e.type === 'big_group');
             const sgItems = Array.isArray(extra?.smallGroups)
@@ -469,13 +485,24 @@ const NewClassroom = () => {
             return;
         }
 
-        if (!svgRef.current) {
+        if (mode === "classic" && !svgRef.current) {
+            message.error("画布尚未准备好，无法导出");
+            return;
+        }
+        if (mode !== "classic" && !fabricCanvasRef.current) {
             message.error("画布尚未准备好，无法导出");
             return;
         }
 
         const exportElements = savedElements.length > 0 ? savedElements : elements;
-        const preview_svg = new XMLSerializer().serializeToString(svgRef.current);
+        const preview_svg = mode === "classic"
+            ? new XMLSerializer().serializeToString(svgRef.current)
+            : fabricCanvasRef.current?.exportSVG?.();
+
+        if (!preview_svg) {
+            message.error("导出失败：画布内容为空或无法生成预览");
+            return;
+        }
 
         setExportLoading(true);
         try {
@@ -697,12 +724,15 @@ const NewClassroom = () => {
                             </Text>
                             <Tree
                                 treeData={treeData.map(bgNode => ({
+                                    key: bgNode.key,
                                     ...bgNode,
                                     title: renderTreeTitle(bgNode),
                                     children: bgNode.children?.map(sgNode => ({
+                                        key: sgNode.key,
                                         ...sgNode,
                                         title: renderTreeTitle(sgNode),
                                         children: sgNode.children?.map(sNode => ({
+                                            key: sNode.key,
                                             ...sNode,
                                             title: renderTreeTitle(sNode)
                                         }))
@@ -792,6 +822,7 @@ const NewClassroom = () => {
 );
 };
 
+// 面板切换项 — 用于右侧 Tabs
 const panelItems = [
 {
     key: "create",
@@ -815,13 +846,6 @@ const panelItems = [
 }
 ];
 
-const renderPanelContent = () => {
-    if (activePanel === 'create') {
-        return <CreatePanel onCreate={handleCreate} mode={mode} onModeChange={handleModeChange} />;
-    }
-    return renderObjectListPanel();
-};
-
 return (
     <Layout className="seat-layout">
         <Content className="seat-content">
@@ -839,67 +863,83 @@ return (
                 </div>
                 <Button onClick={handleOpenExport} style={{ marginLeft: "auto" }}>导出</Button>
             </div>
-    <Card
+            <Card
         className="seat-canvas-card"
         styles={{ body: { width: "100%", height: "100%", display: "flex", padding: 0, position: "relative" } }}
     >
-        <svg
-            key={canvasRenderKey}
-            ref={svgRef}
-            onMouseMove={handleSvgMouseMove}
-            onMouseLeave={handleSvgMouseLeave}
-            className="seat-canvas-svg"
-            xmlns="http://www.w3.org/2000/svg"
-            width="100%"
-            height="100%"
-            viewBox={`0 0 ${canvasWidth} ${CANVAS_HEIGHT}`}
-            preserveAspectRatio="xMidYMid meet"
-        >
-            <rect className="seat-canvas-rect" width="100%" height="100%" fill="transparent" />
-            {elements.length === 0 && (
-                <text className="seat-canvas-text" x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
-                    SVG 画布区域
-                </text>
-            )}
-            {renderSeatElements(elements, {
-                canvasWidth: canvasWidth,
-                canvasHeight: CANVAS_HEIGHT,
-                typeNames: TYPE_NAMES,
-                hoveredItemId: hoveredItemId,
-                config
-            })}
-            <g ref={crosshairGroupRef} className="seat-crosshair" pointerEvents="none" style={{ display: "none" }}>
-                <line
-                    ref={crosshairHRef}
-                    x1={0} y1={0}
-                    x2={canvasWidth} y2={0}
-                    stroke="#1890ff" strokeWidth="1" strokeDasharray="4 4" opacity="0.6"
-                />
-                <line
-                    ref={crosshairVRef}
-                    x1={0} y1={0}
-                    x2={0} y2={CANVAS_HEIGHT}
-                    stroke="#1890ff" strokeWidth="1" strokeDasharray="4 4" opacity="0.6"
-                />
-            </g>
-        </svg>
-        <div
-            ref={coordsRef}
-            style={{
-                position: "absolute",
-                bottom: 16,
-                left: 16,
-                background: "rgba(0, 0, 0, 0.6)",
-                color: "#fff",
-                padding: "4px 8px",
-                borderRadius: "4px",
-                fontSize: "12px",
-                pointerEvents: "none",
-                userSelect: "none",
-                display: "none"
-            }}>
-            X: 0 , Y: 0
-        </div>
+                {mode === "classic" ? (
+                    <>
+                        <svg
+                            key={canvasRenderKey}
+                            ref={svgRef}
+                            onMouseMove={handleSvgMouseMove}
+                            onMouseLeave={handleSvgMouseLeave}
+                            className="seat-canvas-svg"
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="100%"
+                            height="100%"
+                            viewBox={`0 0 ${canvasWidth} ${CANVAS_HEIGHT}`}
+                            preserveAspectRatio="xMidYMid meet"
+                        >
+                            <rect className="seat-canvas-rect" width="100%" height="100%" fill="transparent" />
+                            {elements.length === 0 && (
+                                <text className="seat-canvas-text" x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
+                                    SVG 画布区域
+                                </text>
+                            )}
+                            {renderSeatElements(elements, {
+                                canvasWidth: canvasWidth,
+                                canvasHeight: CANVAS_HEIGHT,
+                                typeNames: TYPE_NAMES,
+                                hoveredItemId: hoveredItemId,
+                                config
+                            })}
+                            <g ref={crosshairGroupRef} className="seat-crosshair" pointerEvents="none" style={{ display: "none" }}>
+                                <line
+                                    ref={crosshairHRef}
+                                    x1={0} y1={0}
+                                    x2={canvasWidth} y2={0}
+                                    stroke="#1890ff" strokeWidth="1" strokeDasharray="4 4" opacity="0.6"
+                                />
+                                <line
+                                    ref={crosshairVRef}
+                                    x1={0} y1={0}
+                                    x2={0} y2={CANVAS_HEIGHT}
+                                    stroke="#1890ff" strokeWidth="1" strokeDasharray="4 4" opacity="0.6"
+                                />
+                            </g>
+                        </svg>
+                        <div
+                            ref={coordsRef}
+                            style={{
+                                position: "absolute",
+                                bottom: 16,
+                                left: 16,
+                                background: "rgba(0, 0, 0, 0.6)",
+                                color: "#fff",
+                                padding: "4px 8px",
+                                borderRadius: "4px",
+                                fontSize: "12px",
+                                pointerEvents: "none",
+                                userSelect: "none",
+                                display: "none"
+                            }}>
+                            X: 0 , Y: 0
+                        </div>
+                    </>
+                ) : (
+                    <FabricClassroomCanvas
+                        ref={fabricCanvasRef}
+                        elements={elements}
+                        config={config}
+                        canvasWidth={canvasWidth}
+                        canvasHeight={CANVAS_HEIGHT}
+                        onElementsChange={setElements}
+                        onSelectItem={(item) => {
+                            setSelectedItem(item);
+                        }}
+                    />
+                )}
     </Card>
 
     <ExportModal
@@ -918,92 +958,47 @@ return (
     className={`seat-sider ${isPanelCollapsed ? "seat-sider-collapsed" : ""}`}
 >
     <div className="seat-sider-shell">
-        <div className="seat-sider-content">
+        <div className={`seat-sider-content ${isIconOnly ? "seat-tabs-icon-only" : ""}`}>
             {!isPanelCollapsed && (
                 <div className="seat-resize-handle" onMouseDown={handleResizeMouseDown} />
             )}
-            {isPanelCollapsed ? (
-                <Tabs
-                    className={`seat-tabs ${isIconOnly ? "seat-tabs-icon-only" : ""}`}
-                    tabPlacement="right"
-                    activeKey={activePanel}
-                    onChange={setActivePanel}
-                    onTabClick={() => {
-                        if (isPanelCollapsed) {
-                            setIsPanelCollapsed(false);
-                        }
-                    }}
-                    items={panelItems}
-                    tabBarExtraContent={{
-                        right: (
-                            <div className="seat-sider-toolbar">
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    className="seat-toolbar-button"
-                                    onClick={toggleCompactTabs}
-                                    aria-label={isCompactTabs ? "恢复面板文字" : "仅显示面板图标"}
-                                >
-                                    <i className={`fas ${isCompactTabs ? "fa-eye" : "fa-eye-slash"}`} />
-                                    <span className="seat-toolbar-button-text">{isCompactTabs ? "显示文字" : "仅图标"}</span>
-                                </Button>
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    className="seat-toolbar-button"
-                                    onClick={togglePanelCollapsed}
-                                    aria-label={isPanelCollapsed ? "展开面板" : "收起面板"}
-                                >
-                                    <i className={`fas ${isPanelCollapsed ? "fa-chevron-left" : "fa-chevron-right"}`} />
-                                    <span className="seat-toolbar-button-text">{isPanelCollapsed ? "展开面板" : "收起面板"}</span>
-                                </Button>
-                            </div>
-                        )
-                    }}
-                />
-            ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 8px', flexShrink: 0 }}>
-                        <Button
-                            type="text"
-                            size="small"
-                            className="seat-toolbar-button"
-                            onClick={toggleCompactTabs}
-                            aria-label={isCompactTabs ? "恢复面板文字" : "仅显示面板图标"}
-                        >
-                            <i className={`fas ${isCompactTabs ? "fa-eye" : "fa-eye-slash"}`} />
-                            <span className="seat-toolbar-button-text">{isCompactTabs ? "显示文字" : "仅图标"}</span>
-                        </Button>
-                        <Button
-                            type="text"
-                            size="small"
-                            className="seat-toolbar-button"
-                            onClick={togglePanelCollapsed}
-                            aria-label={isPanelCollapsed ? "展开面板" : "收起面板"}
-                        >
-                            <i className={`fas ${isPanelCollapsed ? "fa-chevron-left" : "fa-chevron-right"}`} />
-                            <span className="seat-toolbar-button-text">{isPanelCollapsed ? "展开面板" : "收起面板"}</span>
-                        </Button>
-                    </div>
-                    <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                        <SplitPane
-                            defaultRatio={0.5}
-                            minTopHeight={100}
-                            minBottomHeight={100}
-                            top={
-                                <div style={{ height: '100%', overflow: 'auto', padding: '8px' }}>
-                                    <CreatePanel onCreate={handleCreate} mode={mode} onModeChange={handleModeChange} />
-                                </div>
-                            }
-                            bottom={
-                                <div style={{ height: '100%', overflow: 'auto', padding: '8px' }}>
-                                    {renderObjectListPanel()}
-                                </div>
-                            }
-                        />
-                    </div>
-                </div>
-            )}
+            <Tabs
+                className="seat-tabs"
+                tabPlacement="right"
+                activeKey={activePanel}
+                onChange={setActivePanel}
+                onTabClick={() => {
+                    if (isPanelCollapsed) {
+                        setIsPanelCollapsed(false);
+                    }
+                }}
+                items={panelItems}
+            />
+            {/* 右侧工具栏 — 浮动在右下角 */}
+            <div className="seat-sider-toolbar">
+                {!isPanelCollapsed && (
+                    <Button
+                        type="text"
+                        size="small"
+                        className="seat-toolbar-button"
+                        onClick={toggleCompactTabs}
+                        aria-label={isCompactTabs ? "恢复面板文字" : "仅显示面板图标"}
+                    >
+                        <i className={`fas ${isCompactTabs ? "fa-eye" : "fa-eye-slash"}`} />
+                        <span className="seat-toolbar-button-text">{isCompactTabs ? "显示文字" : "仅图标"}</span>
+                    </Button>
+                )}
+                <Button
+                    type="text"
+                    size="small"
+                    className="seat-toolbar-button"
+                    onClick={togglePanelCollapsed}
+                    aria-label={isPanelCollapsed ? "展开面板" : "收起面板"}
+                >
+                    <i className={`fas ${isPanelCollapsed ? "fa-chevron-left" : "fa-chevron-right"}`} />
+                    <span className="seat-toolbar-button-text">{isPanelCollapsed ? "展开面板" : "收起面板"}</span>
+                </Button>
+            </div>
         </div>
     </div>
 </Sider>

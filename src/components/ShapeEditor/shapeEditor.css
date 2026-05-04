@@ -42,10 +42,6 @@
     gap: 8px;
 }
 
-.shape-editor-toolbar button {
-    padding: 8px 10px;
-}
-
 .shape-editor-canvas-wrapper {
     flex: 1 1 auto;
     padding: 12px;

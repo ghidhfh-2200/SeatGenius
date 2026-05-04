@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Form, Input, Modal, Select, Typography, Table, Button, Space, InputNumber, Divider, Tag } from "antd";
+import ShapeEditor from "../ShapeEditor/ShapeEditor";
 
 const { Text } = Typography;
 
@@ -70,6 +71,8 @@ const EditComponentModal = ({
     const [editingSgId, setEditingSgId] = useState(null);
     const [isCreatingSg, setIsCreatingSg] = useState(false);
     const [draftSmallGroups, setDraftSmallGroups] = useState([]);
+    const [shapeEditorOpen, setShapeEditorOpen] = useState(false);
+    const [shapeData, setShapeData] = useState(null);
 
     const isBigGroup = selectedItem?.type === "big_group";
     const isSmallGroup = selectedItem?.type === "small_group";
@@ -712,7 +715,7 @@ const EditComponentModal = ({
                     {/* === 普通元素编辑区（非大组/小组/座位） === */}
                     {isSimpleElement && (
                         <>
-                            {["platform", "desk", "chair", "multimedia", "reserved"].includes(selectedItem.type) && !(selectedItem.type === "multimedia" && mode === "classic") && (
+                            {["platform", "desk", "chair", "multimedia", "reserved"].includes(selectedItem.type) && mode === "classic" && !(selectedItem.type === "multimedia" && mode === "classic") && (
                                 <>
                                     <div className="seat-form-row">
                                         <Form.Item label="横坐标 (X)" name="x" style={{ flex: 1 }}>
@@ -809,7 +812,52 @@ const EditComponentModal = ({
 
                             {["platform", "desk"].includes(selectedItem.type) && !(selectedItem.type === "platform" && mode === "classic") && (
                                 <div className="seat-placeholder-panel">
-                                    <Text type="secondary">形状编辑功能待开发...</Text>
+                                    <Divider titlePlacement="left" plain>
+                                        <span><i className="fas fa-shapes" style={{ marginRight: 4 }} />自定义形状</span>
+                                    </Divider>
+                                    <div style={{
+                                        padding: 12,
+                                        backgroundColor: '#fafafa',
+                                        borderRadius: 6,
+                                        border: '1px solid #f0f0f0',
+                                        marginBottom: 12
+                                    }}>
+                                        <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                                            <i className="fas fa-info-circle" style={{ marginRight: 4 }} />
+                                            使用形状编辑器定义元素的自定义SVG形状
+                                        </Text>
+                                        <Space>
+                                            <Button
+                                                type="primary"
+                                                size="small"
+                                                onClick={() => {
+                                                    setShapeData(selectedItem.shape || null);
+                                                    setShapeEditorOpen(true);
+                                                }}
+                                            >
+                                                📝 编辑形状
+                                            </Button>
+                                            {shapeData && (
+                                                <Button
+                                                    size="small"
+                                                    onClick={() => {
+                                                        setShapeData(null);
+                                                        form.setFieldsValue({ shape: undefined });
+                                                    }}
+                                                >
+                                                    ✕ 清除形状
+                                                </Button>
+                                            )}
+                                        </Space>
+                                        {shapeData && (
+                                            <div style={{ marginTop: 8 }}>
+                                                <Tag color="blue">✓ 已保存形状数据</Tag>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <Form.Item name="shape" style={{ display: 'none' }}>
+                                        <Input type="hidden" />
+                                    </Form.Item>
                                 </div>
                             )}
                         </>
@@ -835,6 +883,22 @@ const EditComponentModal = ({
                     isCreating={isCreatingSg}
                 />
             )}
+
+            {/* 形状编辑器 */}
+            <ShapeEditor
+                isOpen={shapeEditorOpen}
+                onClose={() => setShapeEditorOpen(false)}
+                initialSVG={shapeData}
+                onSaveShape={(svg) => {
+                    setShapeData(svg);
+                    form.setFieldsValue({ shape: svg });
+                    if (onElementsChange && selectedItem && elements.some(e => e.id === selectedItem.id)) {
+                        onElementsChange(prev => prev.map(e => (
+                            e.id === selectedItem.id ? { ...e, shape: svg } : e
+                        )));
+                    }
+                }}
+            />
         </Modal>
     );
 };
