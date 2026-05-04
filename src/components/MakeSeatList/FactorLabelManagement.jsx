@@ -24,7 +24,6 @@ import {
 } from 'antd';
 import {
     AimOutlined,
-    ApartmentOutlined,
     ArrowLeftOutlined,
     CheckCircleFilled,
     DeleteOutlined,

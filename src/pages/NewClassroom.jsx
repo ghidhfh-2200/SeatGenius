@@ -17,7 +17,6 @@ import {
     migrateOldFormat,
     generateIdWithLog,
     batchGenerateIds,
-    getChildren
 } from "../api/newclassroom/idGenerator.js";
 
 const { Content, Sider } = Layout;

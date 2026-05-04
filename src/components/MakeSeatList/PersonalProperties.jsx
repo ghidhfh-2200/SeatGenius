@@ -19,7 +19,6 @@ import {
 import {
     CheckCircleFilled,
     DownloadOutlined,
-    LoadingOutlined,
     SearchOutlined,
     UserOutlined,
 } from '@ant-design/icons';

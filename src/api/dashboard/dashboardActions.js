@@ -9,7 +9,3 @@ export const filterBrokenRecordTitle = (record, fallbackTitle) => {
     }
     return fallbackTitle;
 };
-
-export const createDashboardItems = ({ onDelete }) => ([
-    { key: 'delete', label: '删除该条目', danger: true },
-]);

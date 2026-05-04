@@ -10,15 +10,6 @@
  */
 
 /**
- * 生成一个新ID（不记录日志，用于初始化等场景）
- * @param {number} nextId - 当前计数器值
- * @returns {number} 新ID
- */
-export const generateId = (nextId) => {
-    return nextId;
-};
-
-/**
  * 生成新ID并记录日志
  * @param {number} nextId - 当前计数器值
  * @param {string} type - 元素类型 (big_group/small_group/seat/...)
@@ -150,16 +141,6 @@ export const migrateOldFormat = (elements, startNextId = 0, logs = []) => {
     }
 
     return { elements: newElements, nextId, logs };
-};
-
-/**
- * 从元素数组中获取一个元素的所有子元素
- * @param {Array} elements - 元素数组
- * @param {number} parentId - 父元素ID
- * @returns {Array} 子元素数组
- */
-export const getChildren = (elements, parentId) => {
-    return elements.filter(el => el.parentId === parentId);
 };
 
 /**

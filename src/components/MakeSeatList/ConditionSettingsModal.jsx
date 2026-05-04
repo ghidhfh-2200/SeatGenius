@@ -201,7 +201,7 @@ const ConditionSettingsModal = ({
         
         elements.forEach(el => {
             if (seatTypes.includes(el.type)) {
-                const pos = resolveSeatPosition(el, elements, config);
+                const pos = resolveClassroomPosition(el, elements, config);
                 seats.push({
                     id: el.id,
                     type: el.type,

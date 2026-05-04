@@ -25,7 +25,6 @@ import {
 } from 'antd';
 import {
     AimOutlined,
-    ApartmentOutlined,
     ArrowLeftOutlined,
     CheckCircleFilled,
     DeleteOutlined,
@@ -38,7 +37,6 @@ import {
     SaveOutlined,
     SettingOutlined,
     UserOutlined,
-    TeamOutlined,
 } from '@ant-design/icons';
 import PersonalProperties from '../components/MakeSeatList/PersonalProperties';
 import ConditionSettingsModal from '../components/MakeSeatList/ConditionSettingsModal';

@@ -113,11 +113,6 @@ fn run_python_evolution(payload: &EvolutionStartPayload) -> Result<PythonEvoluti
     })
 }
 
-/// 公开检查演化是否正在运行（供其他模块使用）
-pub fn is_evolution_running() -> bool {
-    current_status().state == "running"
-}
-
 #[tauri::command]
 pub fn start_evolution(payload: EvolutionStartPayload) -> Result<EvolutionStatus, String> {
     let prev = current_status();
@@ -137,7 +132,7 @@ pub fn start_evolution(payload: EvolutionStartPayload) -> Result<EvolutionStatus
         s.progress = 0.01;
         s.generation = 0;
         s.best_fitness = 0.0;
-        s.message = "Python 遗传算法已启动".to_string();
+        s.message = "演化模拟已启动".to_string();
         s.classroom_sgid = classroom_sgid;
         s.classroom_name = classroom_name;
         s.seat_order.clear();
