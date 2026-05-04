@@ -312,7 +312,7 @@ const EvolutionResult = () => {
 
     return (
         <Layout style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f6f8fc 0%, #eef3f9 100%)' }}>
-            <Content style={{ padding: 16 }}>
+            <Content style={{ padding: 16,maxHeight: 'calc(105vh - 40px)', overflow: 'hidden'  }}>
                 <Card
                     title={<Title level={4} style={{ margin: 0 }}>遗传算法座位结果</Title>}
                     extra={fromDashboard ? (
@@ -378,9 +378,9 @@ const EvolutionResult = () => {
                                     </Card>
                                 </Col>
 
-                                <Col xs={24} lg={7}>
-                                    <Card size="small" title="学生列表（右侧修改座位）" style={{ height: '100%' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <Col xs={24} lg={7} style={{ height: '100%' }}>
+                                    <Card size="small" title="学生列表（右侧修改座位）" style={{maxHeight: 'calc(82vh - 40px)', overflow: 'auto' }} styles={{ body: { padding: 12 } }}>
+                                        <div className="student-list-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 8, height: 620 }}>
                                             {seatOrderList.length > 0 ? seatOrderList.map(({ seatId, studentName }) => (
                                                 <div
                                                     key={seatId}

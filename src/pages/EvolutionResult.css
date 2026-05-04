@@ -1,4 +1,24 @@
 /* 学生列表项悬浮效果 */
+.student-list-scroll {
+    height: 620px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.student-list-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+.student-list-scroll::-webkit-scrollbar-thumb {
+    background: rgba(22, 119, 255, 0.35);
+    border-radius: 8px;
+}
+
+.student-list-scroll::-webkit-scrollbar-track {
+    background: rgba(22, 119, 255, 0.08);
+    border-radius: 8px;
+}
+
 .student-list-item:hover {
     background: #e6f4ff;
 }
