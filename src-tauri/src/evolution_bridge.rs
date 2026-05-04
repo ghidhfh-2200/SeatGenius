@@ -8,6 +8,30 @@ use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::Instant;
 
+#[pyclass]
+struct EvolutionProgressCallback {
+    generations: u32,
+}
+
+#[pymethods]
+impl EvolutionProgressCallback {
+    #[pyo3(name = "__call__")]
+    fn call(&self, generation: u32, best_fitness: f64, message: Option<String>) {
+        let total = self.generations.max(1);
+        let gen = generation.min(total);
+        let progress = (gen as f64) / (total as f64);
+        let best = if best_fitness.is_finite() { best_fitness } else { 0.0 };
+        let msg = message.unwrap_or_else(|| format!("Python 演化中：第 {gen}/{total} 代"));
+
+        set_status(|s| {
+            s.progress = progress.min(1.0).max(0.0);
+            s.generation = gen;
+            s.best_fitness = best;
+            s.message = msg;
+        });
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvolutionStartPayload {
     pub classroom_sgid: String,
@@ -96,10 +120,17 @@ fn run_python_evolution(payload: &EvolutionStartPayload) -> Result<PythonEvoluti
 
         let module = PyModule::import_bound(py, "evolution_engine")
             .map_err(|e| format!("导入 evolution_engine 失败: {e}"))?;
+        let progress_callback = Py::new(
+            py,
+            EvolutionProgressCallback {
+                generations: payload.generations.max(1),
+            },
+        )
+        .map_err(|e| e.to_string())?;
         let result = module
             .getattr("run_evolution")
             .map_err(|e| e.to_string())?
-            .call1((payload_json,))
+            .call1((payload_json, progress_callback))
             .map_err(|e| format!("调用 run_evolution 失败: {e}"))?;
 
         let json = PyModule::import_bound(py, "json")
@@ -123,7 +154,6 @@ pub fn start_evolution(payload: EvolutionStartPayload) -> Result<EvolutionStatus
     // 重置取消标志
     EVOLUTION_CANCEL_FLAG.store(false, Ordering::SeqCst);
 
-    let generations = payload.generations.max(1);
     let classroom_sgid = payload.classroom_sgid.clone();
     let classroom_name = payload.classroom_name.clone();
 
@@ -132,7 +162,7 @@ pub fn start_evolution(payload: EvolutionStartPayload) -> Result<EvolutionStatus
         s.progress = 0.01;
         s.generation = 0;
         s.best_fitness = 0.0;
-        s.message = "演化模拟已启动".to_string();
+        s.message = "演化已启动".to_string();
         s.classroom_sgid = classroom_sgid;
         s.classroom_name = classroom_name;
         s.seat_order.clear();
@@ -140,38 +170,6 @@ pub fn start_evolution(payload: EvolutionStartPayload) -> Result<EvolutionStatus
 
     thread::spawn(move || {
         let started = Instant::now();
-        let mut step = 0u32;
-        while step < generations {
-            // 检查是否被取消
-            if EVOLUTION_CANCEL_FLAG.load(Ordering::SeqCst) {
-                set_status(|s| {
-                    s.state = "cancelled".to_string();
-                    s.progress = 0.0;
-                    s.message = "演化已被用户取消".to_string();
-                    s.seat_order.clear();
-                });
-                return;
-            }
-            step += 1;
-            let p = (step as f64) / (generations as f64) * 0.6;
-            set_status(|s| {
-                s.progress = p;
-                s.generation = step;
-                s.message = format!("Rust 调度中：第 {step}/{generations} 代");
-            });
-            std::thread::sleep(std::time::Duration::from_millis(20));
-        }
-
-        // 再次检查取消
-        if EVOLUTION_CANCEL_FLAG.load(Ordering::SeqCst) {
-            set_status(|s| {
-                s.state = "cancelled".to_string();
-                s.progress = 0.0;
-                s.message = "演化已被用户取消".to_string();
-                s.seat_order.clear();
-            });
-            return;
-        }
 
         match run_python_evolution(&payload) {
             Ok(result) => {

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import './EvolutionResult.css';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
-import { Alert, Button, Card, Col, Layout, message, Row, Spin, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Col, Layout, message, Row, Select, Spin, Space, Tag, Typography } from 'antd';
 import { ExportOutlined } from '@ant-design/icons';
 import { normalizeClassroomPayload } from '../api/newclassroom/ClassroomLoader';
 import { renderSeatElements } from '../api/newclassroom/renderSvg.jsx';
@@ -76,6 +76,8 @@ const EvolutionResult = () => {
     const [exportModalOpen, setExportModalOpen] = useState(false);
     const [exportName, setExportName] = useState('');
     const [exporting, setExporting] = useState(false);
+    const [editableSeatOrder, setEditableSeatOrder] = useState({});
+    const [isSeatOrderDirty, setIsSeatOrderDirty] = useState(false);
     const svgRef = useRef(null);
     const prevHoveredSeatRef = useRef(null);
 
@@ -202,10 +204,15 @@ const EvolutionResult = () => {
     // seat_order 现在是座位ID -> 学生姓名的映射对象；兼容旧版按序号输出的数据
     const seatOrder = useMemo(() => status?.seat_order || location.state?.seatOrder || {}, [status, location.state]);
     const normalizedSeatOrder = useMemo(() => normalizeSeatOrder(seatOrder, classroom), [seatOrder, classroom]);
+    useEffect(() => {
+        if (!isSeatOrderDirty) {
+            setEditableSeatOrder(normalizedSeatOrder);
+        }
+    }, [normalizedSeatOrder, isSeatOrderDirty]);
     const seatCount = useMemo(() => {
         return classroom?.elements?.filter((item) => item.type === 'seat').length || 0;
     }, [classroom]);
-    const assignedCount = Object.keys(normalizedSeatOrder).length;
+    const assignedCount = Object.keys(editableSeatOrder || {}).length;
 
     // 导出座位表
     const handleExport = async () => {
@@ -226,7 +233,7 @@ const EvolutionResult = () => {
                     name,
                     classroom_name: status?.classroom_name || classroom?.name || '未命名教室',
                     classroom_sgid: status?.classroom_sgid || location.state?.classroomSgid || classroom?.sgid || '',
-                    seat_order: normalizedSeatOrder,
+                    seat_order: editableSeatOrder,
                     preview_svg: previewSvg,
                 },
             });
@@ -250,20 +257,53 @@ const EvolutionResult = () => {
 
     // 将 seat_order 映射转为排序后的列表用于显示
     const seatOrderList = useMemo(() => {
-        return Object.entries(normalizedSeatOrder)
+        return Object.entries(editableSeatOrder || {})
             .sort(([idA], [idB]) => Number(idA) - Number(idB))
             .map(([seatId, studentName]) => ({ seatId, studentName }));
-    }, [normalizedSeatOrder]);
+    }, [editableSeatOrder]);
 
     // 构建学生姓名 -> 座位ID 的反向映射，通过 ref 存储供 DOM 操作使用
     const studentToSeatIdMapRef = useRef({});
     useEffect(() => {
         const map = {};
-        Object.entries(normalizedSeatOrder).forEach(([seatId, studentName]) => {
+        Object.entries(editableSeatOrder || {}).forEach(([seatId, studentName]) => {
             map[studentName] = seatId;
         });
         studentToSeatIdMapRef.current = map;
-    }, [normalizedSeatOrder]);
+    }, [editableSeatOrder]);
+
+    const seatIdOptions = useMemo(() => {
+        const seatIds = (classroom?.elements || [])
+            .filter((item) => item.type === 'seat')
+            .map((item) => String(item.id));
+
+        const merged = new Set(seatIds);
+        Object.keys(editableSeatOrder || {}).forEach((id) => merged.add(String(id)));
+
+        return Array.from(merged).sort((a, b) => Number(a) - Number(b));
+    }, [classroom, editableSeatOrder]);
+
+    const handleSeatChange = useCallback((studentName, nextSeatId) => {
+        setEditableSeatOrder((prev) => {
+            const next = { ...(prev || {}) };
+            const currentSeatId = Object.keys(next).find((id) => next[id] === studentName);
+
+            if (currentSeatId === nextSeatId) return next;
+
+            const existingStudent = next[nextSeatId];
+            if (currentSeatId) {
+                delete next[currentSeatId];
+            }
+
+            if (existingStudent && currentSeatId) {
+                next[currentSeatId] = existingStudent;
+            }
+
+            next[nextSeatId] = studentName;
+            return next;
+        });
+        setIsSeatOrderDirty(true);
+    }, []);
 
     // 判断是否从 Dashboard 进入（没有 seatOrder 即为 Dashboard 来源，仅支持查看）
     const fromDashboard = useMemo(() => {
@@ -278,7 +318,10 @@ const EvolutionResult = () => {
                     extra={fromDashboard ? (
                         <Button onClick={() => navigate('/')}>返回</Button>
                     ) : (
-                        <Button icon={<ExportOutlined />} onClick={openExportModal}>导出座位表</Button>
+                        <Space>
+                            <Button onClick={() => navigate('/')}>放弃并返回仪表盘</Button>
+                            <Button icon={<ExportOutlined />} onClick={openExportModal}>导出座位表</Button>
+                        </Space>
                     )}
                 >
                     <Space orientation="vertical" size="large" style={{ width: '100%' }}>
@@ -328,7 +371,7 @@ const EvolutionResult = () => {
                                                     canvasHeight: classroom.canvasHeight || FALLBACK_CONFIG.CANVAS_HEIGHT,
                                                     typeNames: TYPE_NAMES,
                                                     config: classroom.config || FALLBACK_CONFIG,
-                                                    seatAssignments: normalizedSeatOrder,
+                                                    seatAssignments: editableSeatOrder,
                                                 })}
                                             </svg>
                                         </div>
@@ -336,7 +379,7 @@ const EvolutionResult = () => {
                                 </Col>
 
                                 <Col xs={24} lg={7}>
-                                    <Card size="small" title="学生列表" style={{ height: '100%' }}>
+                                    <Card size="small" title="学生列表（右侧修改座位）" style={{ height: '100%' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                             {seatOrderList.length > 0 ? seatOrderList.map(({ seatId, studentName }) => (
                                                 <div
@@ -356,7 +399,16 @@ const EvolutionResult = () => {
                                                     }}
                                                 >
                                                     <Tag color="blue" style={{ marginTop: 2, flexShrink: 0 }}>{seatId}</Tag>
-                                                    <Text>{studentName}</Text>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                                                        <Text>{studentName}</Text>
+                                                        <Select
+                                                            size="small"
+                                                            value={String(seatId)}
+                                                            onChange={(value) => handleSeatChange(studentName, String(value))}
+                                                            options={seatIdOptions.map((id) => ({ value: id, label: `座位 ${id}` }))}
+                                                            style={{ width: '100%' }}
+                                                        />
+                                                    </div>
                                                 </div>
                                             )) : (
                                                 <Text type="secondary">暂无座位分配结果</Text>

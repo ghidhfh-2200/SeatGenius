@@ -626,6 +626,9 @@ const NewClassroom = () => {
             >
                 <Checkbox
                     checked={isChecked}
+                    onChange={(e) => {
+                        e.stopPropagation();
+                    }}
                     onClick={(e) => {
                         e.stopPropagation();
                         handleTreeCheck(node.id, !isChecked);
@@ -784,6 +787,9 @@ const NewClassroom = () => {
                     >
                         <Checkbox
                             checked={isChecked}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                            }}
                             onChange={(e) => {
                                 e.stopPropagation();
                                 if (e.target.checked) {

@@ -8,6 +8,7 @@ export const ADJACENCY_TYPES = [
             { key: 'diff_gender', label: '异性', desc: '同桌两人性别不同', defaultValue: 0.3 },
             { key: 'social_near', label: '社交亲近', desc: '同桌两人社交属性接近', defaultValue: 0.8 },
             { key: 'social_far', label: '社交疏远', desc: '同桌两人社交属性差异大', defaultValue: 0.3 },
+            { key: 'score_gap', label: '成绩互助', desc: '同桌两人成绩差异较大', defaultValue: 0.7 },
         ],
     },
     {
@@ -19,6 +20,7 @@ export const ADJACENCY_TYPES = [
             { key: 'neighbor_diff_gender', label: '异性', desc: '前后两人性别不同', defaultValue: 0.4 },
             { key: 'neighbor_social_near', label: '社交亲近', desc: '前后两人社交属性接近', defaultValue: 0.7 },
             { key: 'neighbor_social_far', label: '社交疏远', desc: '前后两人社交属性差异大', defaultValue: 0.3 },
+            { key: 'neighbor_score_gap', label: '成绩互助', desc: '前后两人成绩差异较大', defaultValue: 0.6 },
         ],
     },
 ];
@@ -53,6 +55,7 @@ export const FACTOR_OPTIONS = [
     { value: 'sleep', label: '上课睡觉（0~1）' },
     { value: 'mobility', label: '行动自由度（0~1）' },
     { value: 'sensitivity', label: '视听敏感度（0~1）' },
+    { value: 'score', label: '成绩（0~1）' },
 ];
 
 export const FACTOR_LABEL_MAP = Object.fromEntries(FACTOR_OPTIONS.map((factor) => [factor.value, factor.label]));
@@ -66,6 +69,7 @@ export const FACTOR_CONDITION_TEMPLATES = [
     { key: 'sleep', label: '上课睡觉', unit: '', thresholds: [0.3, 0.6] },
     { key: 'mobility', label: '行动自由度', unit: '', thresholds: [0.3, 0.6] },
     { key: 'sensitivity', label: '视听敏感度', unit: '', thresholds: [0.3, 0.6] },
+    { key: 'score', label: '成绩', unit: '', thresholds: [0.3, 0.7] },
 ];
 
 export const createDefaultPositionRewards = () => {
@@ -91,10 +95,12 @@ export const createDefaultAdjacencyRewards = () => ({
     diff_gender: 0.3,
     social_near: 0.8,
     social_far: 0.3,
+    score_gap: 0.7,
     neighbor_same_gender: 0.6,
     neighbor_diff_gender: 0.4,
     neighbor_social_near: 0.7,
     neighbor_social_far: 0.3,
+    neighbor_score_gap: 0.6,
 });
 
 export const createDefaultFactorRangeRewards = (factorKey) => {

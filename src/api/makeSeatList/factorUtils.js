@@ -7,6 +7,7 @@ export const factorOptions = [
     { value: 'sleep', label: '上课睡觉（0~1）' },
     { value: 'mobility', label: '行动自由度（0~1）' },
     { value: 'sensitivity', label: '视听敏感度（0~1）' },
+    { value: 'score', label: '成绩（0~1）' },
 ];
 
 export const factorLabelMap = Object.fromEntries(factorOptions.map((item) => [item.value, item.label]));

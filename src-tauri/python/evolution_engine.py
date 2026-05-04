@@ -11,6 +11,18 @@ except Exception:
     base = creator = tools = algorithms = None
 
 
+EVOLUTION_PROGRESS = {
+    "generation": 0,
+    "best_fitness": 0.0,
+    "total_generations": 0,
+    "message": "等待开始",
+}
+
+
+def get_progress_snapshot():
+    return dict(EVOLUTION_PROGRESS)
+
+
 def _safe_float(value, default=0.0):
     try:
         if value is None:
@@ -52,6 +64,19 @@ def _extract_metric(student, keys, default=0.0):
             return _safe_float(student.get(key), default)
 
     return float(default)
+
+
+def _extract_score(student, default=0.5):
+    return _extract_metric(student, ("score", "grade", "成绩", "performance", "score_value"), default)
+
+
+def _find_reward_config(conditions):
+    if not isinstance(conditions, list):
+        return {}
+    for item in conditions:
+        if isinstance(item, dict) and item.get("_isRewardConfig"):
+            return item
+    return {}
 
 
 def _build_seat_positions(total_seats, rows=None, cols=None):
@@ -145,7 +170,7 @@ def _repair_height_constraint(individual, student_heights, seat_positions):
     return individual
 
 
-def run_evolution(payload_json: str):
+def run_evolution(payload_json: str, progress_callback=None):
     """DEAP-based genetic algorithm entrypoint called from Rust via PyO3.
 
     - Expects payload to contain `names`, optional `personal_attrs`, and `generations`.
@@ -157,6 +182,13 @@ def run_evolution(payload_json: str):
     personal_attrs = payload.get("personal_attrs", []) or []
     seat_layout = payload.get("seat_layout") or {}
     seat_ids = [str(sid) for sid in (payload.get("seat_ids") or []) if str(sid).strip()]
+    reward_config = _find_reward_config(payload.get("conditions") or [])
+    adjacency_rewards = reward_config.get("adjacencyRewards") or reward_config.get("adjacency_rewards") or {}
+
+    EVOLUTION_PROGRESS["generation"] = 0
+    EVOLUTION_PROGRESS["best_fitness"] = 0.0
+    EVOLUTION_PROGRESS["total_generations"] = generations
+    EVOLUTION_PROGRESS["message"] = "演化准备中"
 
     if base is None:
         return {
@@ -210,6 +242,10 @@ def run_evolution(payload_json: str):
 
     student_heights = [_extract_height(personal_attrs[i] if i < len(personal_attrs) else {}, 0.0) for i in range(n_students)]
     student_low_visibility = [_extract_metric(personal_attrs[i] if i < len(personal_attrs) else {}, ("mobility", "sensitivity", "visibility"), 0.5) for i in range(n_students)]
+    student_scores = [_extract_score(personal_attrs[i] if i < len(personal_attrs) else {}, 0.5) for i in range(n_students)]
+
+    score_gap_deskmate_weight = _safe_float(adjacency_rewards.get("score_gap"), 0.7)
+    score_gap_neighbor_weight = _safe_float(adjacency_rewards.get("neighbor_score_gap"), 0.6)
 
     # seat desirability: front seats have slightly higher value, but not too steep
     seat_weights = []
@@ -217,6 +253,18 @@ def run_evolution(payload_json: str):
         front_bias = (rows - r) / float(rows)
         center_bias = 1.0 - (abs(c - (cols - 1) / 2.0) / max(1.0, cols / 2.0)) * 0.15
         seat_weights.append(0.75 * front_bias + 0.25 * center_bias)
+
+    # Precompute adjacency pairs (right/left as deskmate, front/back as neighbor)
+    position_index_by_rc = {(r, c): idx for idx, (r, c) in enumerate(seat_positions)}
+    deskmate_pairs = []
+    neighbor_pairs = []
+    for idx, (r, c) in enumerate(seat_positions):
+        right_idx = position_index_by_rc.get((r, c + 1))
+        if right_idx is not None:
+            deskmate_pairs.append((idx, right_idx))
+        down_idx = position_index_by_rc.get((r + 1, c))
+        if down_idx is not None:
+            neighbor_pairs.append((idx, down_idx))
 
     # DEAP setup (creator may already exist in long-running interpreter)
     # Our evaluate returns 3 objectives, ensure fitness weights length matches.
@@ -291,7 +339,27 @@ def run_evolution(payload_json: str):
         occupancy_factor = 1.0 - min(1.0, small_class_ratio)
         spread_obj = spread * spread_weight * (1.0 + occupancy_factor)
         balance_obj = balance * balance_weight * (1.0 + occupancy_factor)
-        utility_obj = utility * utility_weight
+        def _avg_score_gap(pairs):
+            total = 0.0
+            count = 0
+            for left_idx, right_idx in pairs:
+                sid_a = individual[left_idx]
+                sid_b = individual[right_idx]
+                if not (isinstance(sid_a, int) and 0 <= sid_a < n_students):
+                    continue
+                if not (isinstance(sid_b, int) and 0 <= sid_b < n_students):
+                    continue
+                total += abs(student_scores[sid_a] - student_scores[sid_b])
+                count += 1
+            return total / count if count > 0 else 0.0
+
+        score_gap_bonus = 0.0
+        if score_gap_deskmate_weight > 0:
+            score_gap_bonus += score_gap_deskmate_weight * _avg_score_gap(deskmate_pairs)
+        if score_gap_neighbor_weight > 0:
+            score_gap_bonus += score_gap_neighbor_weight * _avg_score_gap(neighbor_pairs)
+
+        utility_obj = (utility * utility_weight) + score_gap_bonus
 
         return (float(utility_obj), float(spread_obj), float(balance_obj))
 
@@ -329,7 +397,7 @@ def run_evolution(payload_json: str):
     ref_points = tools.uniform_reference_points(3, p=max(6, min(12, total_seats)))
     toolbox.register("select", tools.selNSGA3, ref_points=ref_points)
 
-    for _ in range(generations):
+    for gen_idx in range(1, generations + 1):
         # Evaluate invalid individuals
         invalid_ind = [ind for ind in pop if not ind.fitness.valid]
         for ind in invalid_ind:
@@ -371,6 +439,22 @@ def run_evolution(payload_json: str):
 
         pop[:] = offspring
 
+        best_in_gen = None
+        best_candidates = [ind for ind in pop if ind.fitness.valid]
+        if best_candidates:
+            best_in_gen = max(best_candidates, key=lambda ind: ind.fitness.values)
+
+        best_fitness_gen = float(best_in_gen.fitness.values[0]) if best_in_gen else 0.0
+        EVOLUTION_PROGRESS["generation"] = gen_idx
+        EVOLUTION_PROGRESS["best_fitness"] = float(round(best_fitness_gen, 6))
+        EVOLUTION_PROGRESS["message"] = f"Python 演化中：第 {gen_idx}/{generations} 代"
+
+        if progress_callback is not None:
+            try:
+                progress_callback(gen_idx, EVOLUTION_PROGRESS["best_fitness"], EVOLUTION_PROGRESS["message"])
+            except Exception:
+                pass
+
     # best individual
     feasible_candidates = [ind for ind in pop if ind.fitness.valid]
     if feasible_candidates:
@@ -391,6 +475,10 @@ def run_evolution(payload_json: str):
         if isinstance(sid, int) and 0 <= sid < n_students:
             seat_order[str(seat_ids[pos_idx])] = names[sid]
         # 空位不加入映射（即没有该座位ID的条目）
+
+    EVOLUTION_PROGRESS["generation"] = generations
+    EVOLUTION_PROGRESS["best_fitness"] = float(round(best_fitness, 6))
+    EVOLUTION_PROGRESS["message"] = "DEAP NSGA-III 遗传算法已完成"
 
     return {
         "generation": generations,

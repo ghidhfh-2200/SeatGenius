@@ -548,7 +548,7 @@ const SeatPlanEditor = () => {
                                             <p className="ant-upload-drag-icon">
                                                 <InboxOutlined />
                                             </p>
-                                            <p className="ant-upload-text">点击或拖拽文件到此区域上传名单</p>
+                                            <p className="ant-upload-text">点击上传名单</p>
                                             <p className="ant-upload-hint">支持 .txt 或 .csv 文件，每行一个姓名</p>
                                         </Dragger>
                                         <Divider plain>或</Divider>
