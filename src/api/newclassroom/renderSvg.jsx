@@ -8,12 +8,20 @@ const getConfigNumber = (config, key, fallback) => {
 
 const parseRelativePos = (value, max) => {
     if (value === undefined || value === null || value === "") return max / 2;
+    // 将输入值作为百分比处理（0-100表示0%-100%）
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) {
+        // 如果值在 0-100 之间，按百分比解释；否则按绝对像素值
+        if (numeric >= 0 && numeric <= 100) {
+            return (numeric / 100) * max;
+        }
+        return Math.max(0, Math.min(max, numeric));
+    }
     if (typeof value === "string" && value.includes("%")) {
         const percent = Number.parseFloat(value);
         return Number.isFinite(percent) ? (percent / 100) * max : max / 2;
     }
-    const numeric = Number(value);
-    return Number.isFinite(numeric) ? Math.max(0, Math.min(max, numeric)) : max / 2;
+    return max / 2;
 };
 
 const getElementSize = (item, config = {}) => {
@@ -75,15 +83,16 @@ const getBigGroupActualWidth = (bigGroup, allElements, config) => {
 
 const wrapSeatName = (name, maxCharsPerLine = 4, maxLines = 2) => {
     const text = String(name || '空位').trim() || '空位';
-    if (text.length <= maxCharsPerLine) return [text];
+    const charsPerLine = Math.max(1, maxCharsPerLine); // 确保至少1个字符
+    if (text.length <= charsPerLine) return [text];
 
     const lines = [];
-    for (let i = 0; i < text.length && lines.length < maxLines; i += maxCharsPerLine) {
-        lines.push(text.slice(i, i + maxCharsPerLine));
+    for (let i = 0; i < text.length && lines.length < maxLines; i += charsPerLine) {
+        lines.push(text.slice(i, i + charsPerLine));
     }
 
-    if (text.length > maxCharsPerLine * maxLines) {
-        lines[maxLines - 1] = `${lines[maxLines - 1].slice(0, Math.max(0, maxCharsPerLine - 1))}…`;
+    if (text.length > charsPerLine * maxLines) {
+        lines[maxLines - 1] = `${lines[maxLines - 1].slice(0, Math.max(0, charsPerLine - 1))}…`;
     }
 
     return lines;
@@ -306,9 +315,12 @@ const renderSeatElements = (elements, options) => {
                                 const seatId = String(seatLayout.seat.id);
                                 // 从映射中查找该座位的学生姓名，如果没找到则为空位
                                 const studentName = seatAssignments[seatId] || "空位";
-                                const lines = wrapSeatName(studentName, Math.max(2, Math.floor(seatLayout.width / 12)), 2);
-                                const fontSize = Math.max(8, Math.min(13, seatLayout.width / Math.max(3.5, Math.max(...lines.map((line) => line.length), 1))));
-                                const lineHeight = fontSize * 1.08;
+                                const maxCharsPerLine = Math.max(1, Math.floor(seatLayout.width / 12));
+                                const lines = wrapSeatName(studentName, maxCharsPerLine, 2);
+                                // 确保字体大小有合理的最小值
+                                const maxLineLength = Math.max(...lines.map((line) => line.length), 1);
+                                const fontSize = Math.max(7, Math.min(13, Math.min(seatLayout.width / (maxLineLength * 2.5), seatLayout.height / 4)));
+                                const lineHeight = fontSize * 1.1;
                                 const startY = seatLayout.y + seatLayout.height / 2 - ((lines.length - 1) * lineHeight) / 2;
 
                                 return (
@@ -337,7 +349,7 @@ const renderSeatElements = (elements, options) => {
                                             fontWeight="600"
                                             paintOrder="stroke"
                                             stroke="#fff"
-                                            strokeWidth="2"
+                                            strokeWidth="1.5"
                                             data-seat-id={seatId}
                                             data-student-name={studentName}
                                         >
@@ -360,6 +372,8 @@ const renderSeatElements = (elements, options) => {
             );
         } else {
             pos = getElementPosition(item, size, canvasWidth, canvasHeight, elements, config);
+            const isAisle = item.type === "aisle";
+            const aisleFill = isAisle && item.color ? item.color : (isAisle ? "rgba(0,0,0,0.15)" : fill);
             content = (
                 <g>
                     <rect
@@ -368,11 +382,11 @@ const renderSeatElements = (elements, options) => {
                         width={size.width}
                         height={size.height}
                         rx={size.rx}
-                        fill={item.type === "aisle" ? "rgba(0,0,0,0.15)" : fill}
-                        stroke={strokeColor}
+                        fill={aisleFill}
+                        stroke={isAisle && item.color ? item.color : strokeColor}
                         strokeWidth="1.5"
-                        strokeDasharray={item.type === "aisle" ? "6 4" : "none"}
-                        opacity={item.type === "aisle" ? 0.8 : 1}
+                        strokeDasharray={isAisle ? "6 4" : "none"}
+                        opacity={isAisle ? 0.8 : 1}
                     />
                 </g>
             );

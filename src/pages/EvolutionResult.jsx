@@ -312,19 +312,21 @@ const EvolutionResult = () => {
 
     return (
         <Layout style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f6f8fc 0%, #eef3f9 100%)' }}>
-            <Content style={{ padding: 16 }}>
+            <Content style={{ padding: 16, height: 'calc(100vh - 32px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 <Card
                     title={<Title level={4} style={{ margin: 0 }}>遗传算法座位结果</Title>}
                     extra={fromDashboard ? (
                         <Button onClick={() => navigate('/')}>返回</Button>
                     ) : (
                         <Space>
-                            <Button onClick={() => navigate('/')}>放弃并返回仪表盘</Button>
+                            <Button onClick={() => navigate('/')}>返回仪表盘</Button>
                             <Button icon={<ExportOutlined />} onClick={openExportModal}>导出座位表</Button>
                         </Space>
                     )}
+                    style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}
+                    styles={{ body: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '16px' } }}
                 >
-                    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+                    <Space orientation="vertical" size="large" style={{ width: '100%', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                         <Space wrap>
                             <Text strong>教室：</Text>
                             <Tag color="blue">{status?.classroom_name || classroom?.name || '未指定'}</Tag>
@@ -338,20 +340,21 @@ const EvolutionResult = () => {
                         {loading ? (
                             <Spin size="large" description="正在载入教室与座位结果..." />
                         ) : classroom ? (
-                            <Row gutter={[16, 16]}>
-                                <Col xs={24} lg={17}>
+                            <Row gutter={[16, 16]} style={{ flex: 1, minHeight: 0, overflow: 'hidden', width: '100%', height: '100%' }}>
+                                <Col xs={24} lg={17} style={{ height: '100%' }}>
                                     <Card
                                         size="small"
                                         title="座位表"
-                                        styles={{ body: { padding: 12 } }}
-                                        style={{ height: '100%' }}
+                                        style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'auto',maxHeight: "calc(80vh - 40px)"}}
+                                        styles={{ body: { flex: 1, minHeight: 0, padding: 12, display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
                                     >
                                         <div
                                             style={{
                                                 width: '100%',
-                                                minHeight: 620,
+                                                flex: 1,
+                                                minHeight: 0,
                                                 borderRadius: 12,
-                                                overflow: 'hidden',
+                                                overflow: 'auto',
                                                 border: '1px solid #e6eaf2',
                                                 background: 'linear-gradient(180deg, #ffffff 0%, #fafcff 100%)',
                                             }}
@@ -364,6 +367,7 @@ const EvolutionResult = () => {
                                                 height="100%"
                                                 viewBox={`0 0 ${classroom.canvasWidth || FALLBACK_CONFIG.CANVAS_WIDTH} ${classroom.canvasHeight || FALLBACK_CONFIG.CANVAS_HEIGHT}`}
                                                 preserveAspectRatio="xMidYMid meet"
+                                                style={{ minWidth: '100%', minHeight: '100%', display: 'block' }}
                                             >
                                                 <rect width="100%" height="100%" fill="transparent" />
                                                 {renderSeatElements(classroom.elements || [], {
@@ -379,8 +383,13 @@ const EvolutionResult = () => {
                                 </Col>
 
                                 <Col xs={24} lg={7} style={{ height: '100%' }}>
-                                    <Card size="small" title="学生列表" style={{ height: '100%' }} styles={{ body: { padding: 12 } }}>
-                                        <div className="student-list-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 8, height: 620, overflowY: 'auto' }}>
+                                    <Card 
+                                        size="small" 
+                                        title="学生列表" 
+                                        style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'auto', maxHeight: "calc(80vh - 40px)"}}
+                                        styles={{ body: { flex: 1, minHeight: 0, padding: 12, overflowY: 'auto', overflowX: 'hidden' } }}
+                                    >
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                             {seatOrderList.length > 0 ? seatOrderList.map(({ seatId, studentName }) => (
                                                 <div
                                                     key={seatId}

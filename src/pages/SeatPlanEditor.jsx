@@ -95,6 +95,7 @@ const SeatPlanEditor = () => {
     const [startEvolutionOpen, setStartEvolutionOpen] = useState(false);
     const [startingEvolution, setStartingEvolution] = useState(false);
     const [evolutionRunning, setEvolutionRunning] = useState(false);
+    const [classroomForEvolution, setClassroomForEvolution] = useState(null);
 
     // ========== 标签编辑 ==========
     const [labelModalOpen, setLabelModalOpen] = useState(false);
@@ -295,7 +296,7 @@ const SeatPlanEditor = () => {
     };
 
     // ========== 开始演化 ==========
-    const handleStartEvolution = async (classroom) => {
+    const handleOpenEvolutionConfirm = async () => {
         const rewardConfig = conditions.find(c => c._isRewardConfig);
         if (!rewardConfig) {
             message.warning('请先保存奖励配置');
@@ -305,10 +306,34 @@ const SeatPlanEditor = () => {
             message.warning('请先配置个人属性数据');
             return;
         }
+        const classroomSgid = rewardConfig.classroomSgid;
+        if (!classroomSgid) {
+            message.warning('奖励配置中未关联教室，请先进入奖励配置选择教室');
+            return;
+        }
+        try {
+            const rows = await invoke('get_dashboard_records');
+            const available = (Array.isArray(rows) ? rows : []).filter(item => !item?.is_broken);
+            const matched = available.find(c => c.sgid === classroomSgid);
+            if (!matched) {
+                message.error('未找到关联的教室数据，请检查奖励配置中的教室选择');
+                return;
+            }
+            setClassroomForEvolution(matched);
+            setStartEvolutionOpen(true);
+        } catch (err) {
+            console.error('获取教室信息失败', err);
+            message.error('获取教室信息失败：' + String(err));
+        }
+    };
+
+    const handleStartEvolution = async (classroom) => {
+        const rewardConfig = conditions.find(c => c._isRewardConfig);
         setStartingEvolution(true);
         try {
             await invoke('start_evolution', { payload: buildEvolutionPayload({ classroom, names, personalAttrs, conditions, rewardConfig }) });
             setStartEvolutionOpen(false);
+            setClassroomForEvolution(null);
             message.success('已启动遗传算法演化任务');
             navigate('/evolution-status', { state: { classroom } });
         } catch (err) {
@@ -476,7 +501,7 @@ const SeatPlanEditor = () => {
                             </Button>
                             <Button
                                 icon={<PlayCircleOutlined />}
-                                onClick={() => setStartEvolutionOpen(true)}
+                                onClick={handleOpenEvolutionConfirm}
                                 disabled={evolutionRunning || !(personalAttrs.length > 0 && conditions.some(c => c._isRewardConfig))}
                                 title={evolutionRunning ? '已有演化任务正在运行' : '开始演化'}
                             >
@@ -797,7 +822,11 @@ const SeatPlanEditor = () => {
                 <StartEvolutionModal
                     open={startEvolutionOpen}
                     loading={startingEvolution}
-                    onCancel={() => setStartEvolutionOpen(false)}
+                    classroom={classroomForEvolution}
+                    onCancel={() => {
+                        setStartEvolutionOpen(false);
+                        setClassroomForEvolution(null);
+                    }}
                     onOk={handleStartEvolution}
                 />
 

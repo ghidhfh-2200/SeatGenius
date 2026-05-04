@@ -74,6 +74,7 @@ const FactorLabelManagement = ({ names = [] }) => {
     const [conditionSettingsOpen, setConditionSettingsOpen] = useState(false);
     const [startEvolutionOpen, setStartEvolutionOpen] = useState(false);
     const [startingEvolution, setStartingEvolution] = useState(false);
+    const [classroomForEvolution, setClassroomForEvolution] = useState(null);
 
     const [labelModalOpen, setLabelModalOpen] = useState(false);
     const [editingLabelId, setEditingLabelId] = useState(null);
@@ -218,7 +219,7 @@ const FactorLabelManagement = ({ names = [] }) => {
         message.success('奖励配置已保存');
     };
 
-    const handleStartEvolution = async (classroom) => {
+    const handleOpenEvolutionConfirm = async () => {
         const rewardConfig = conditions.find(c => c._isRewardConfig);
         if (!rewardConfig) {
             message.warning('请先保存奖励配置');
@@ -228,12 +229,36 @@ const FactorLabelManagement = ({ names = [] }) => {
             message.warning('请先配置个人属性数据');
             return;
         }
+        const classroomSgid = rewardConfig.classroomSgid;
+        if (!classroomSgid) {
+            message.warning('奖励配置中未关联教室，请先进入奖励配置选择教室');
+            return;
+        }
+        try {
+            const rows = await invoke('get_dashboard_records');
+            const available = (Array.isArray(rows) ? rows : []).filter(item => !item?.is_broken);
+            const matched = available.find(c => c.sgid === classroomSgid);
+            if (!matched) {
+                message.error('未找到关联的教室数据，请检查奖励配置中的教室选择');
+                return;
+            }
+            setClassroomForEvolution(matched);
+            setStartEvolutionOpen(true);
+        } catch (err) {
+            console.error('获取教室信息失败', err);
+            message.error('获取教室信息失败：' + String(err));
+        }
+    };
+
+    const handleStartEvolution = async (classroom) => {
+        const rewardConfig = conditions.find(c => c._isRewardConfig);
 
         setStartingEvolution(true);
         try {
             await invoke('start_evolution', { payload: buildEvolutionPayload({ classroom, names, personalAttrs, conditions, rewardConfig }) });
 
             setStartEvolutionOpen(false);
+            setClassroomForEvolution(null);
             message.success('已启动遗传算法演化任务');
             navigate('/evolution-status', { state: { classroom } });
         } catch (err) {
@@ -353,7 +378,7 @@ const FactorLabelManagement = ({ names = [] }) => {
             setEditorVisible={setEditorVisible}
             setConditionSettingsOpen={setConditionSettingsOpen}
             getConfigStats={getConfigStats}
-            setStartEvolutionOpen={setStartEvolutionOpen}
+            handleOpenEvolutionConfirm={handleOpenEvolutionConfirm}
             canStartEvolution={personalAttrs.length > 0 && conditions.some(c => c._isRewardConfig)}
             onSaveProfile={() => {
                 setProfileName('');
@@ -386,7 +411,11 @@ const FactorLabelManagement = ({ names = [] }) => {
             <StartEvolutionModal
                 open={startEvolutionOpen}
                 loading={startingEvolution}
-                onCancel={() => setStartEvolutionOpen(false)}
+                classroom={classroomForEvolution}
+                onCancel={() => {
+                    setStartEvolutionOpen(false);
+                    setClassroomForEvolution(null);
+                }}
                 onOk={handleStartEvolution}
             />
 
@@ -667,7 +696,7 @@ const LayoutShell = ({
     setEditorVisible,
     setConditionSettingsOpen,
     getConfigStats,
-    setStartEvolutionOpen,
+    handleOpenEvolutionConfirm,
     canStartEvolution,
     // 档案相关 props
     onSaveProfile,
@@ -708,7 +737,7 @@ const LayoutShell = ({
                     <Button
                         type='primary'
                         icon={<PlayCircleOutlined />}
-                        onClick={() => setStartEvolutionOpen(true)}
+                        onClick={handleOpenEvolutionConfirm}
                         disabled={!canStartEvolution}
                     >
                         开始演化
