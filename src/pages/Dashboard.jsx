@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Layout, Row, Col, Card, Statistic, Tabs, Table, Dropdown, Button, Typography, Space, Image, Tooltip, Tag, message } from 'antd';
 import { MoreOutlined, DeleteOutlined, RobotOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import './Dashboard.css';
-import { buildPreviewSrc, filterBrokenRecordTitle } from '../api/dashboard/dashboardActions';
+import { buildPreviewSrc, filterBrokenRecordTitle, createDashboardHandlers } from '../api/dashboard/dashboardActions';
 
 const { Content } = Layout;
 const { Text } = Typography;
@@ -40,23 +40,10 @@ const Dashboard = () => {
         loadRecords();
     }, []);
 
-    const handleAction = (key, item, isSeatTable = false) => {
-        if (key === 'delete') {
-            setLoading(true);
-            const command = isSeatTable ? 'delete_seat_table' : 'delete_classroom';
-            const stateUpdater = isSeatTable ? setSeatTables : setClassrooms;
-            invoke(command, { sgid: item.sgid })
-                .then(() => {
-                    stateUpdater(prev => prev.filter(record => record.sgid !== item.sgid));
-                    message.success('删除成功');
-                })
-                .catch(err => {
-                    console.error('删除失败', err);
-                    message.error('删除失败：' + String(err));
-                })
-                .finally(() => setLoading(false));
-        }
-    };
+    const { handleAction } = React.useMemo(
+        () => createDashboardHandlers({ invoke, message, setLoading, setSeatTables, setClassrooms }),
+        [invoke, message],
+    );
 
     const openClassroom = (record) => {
         navigate('/new-classroom', { state: { sgid: record.sgid } });

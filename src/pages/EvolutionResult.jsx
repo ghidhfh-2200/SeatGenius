@@ -6,7 +6,7 @@ import { Alert, Button, Card, Col, Layout, message, Row, Select, Spin, Space, Ta
 import { ExportOutlined } from '@ant-design/icons';
 import { normalizeClassroomPayload } from '../api/newclassroom/ClassroomLoader';
 import { renderSeatElements } from '../api/newclassroom/renderSvg.jsx';
-import { resolveClassroomSgidByName, normalizeSeatOrder } from '../api/evolution/evolutionResultActions';
+import { resolveClassroomSgidByName, normalizeSeatOrder, createEvolutionResultHandlers } from '../api/evolution/evolutionResultActions';
 import ExportSeatTableModal from '../components/EvolutionResult/ExportSeatTableModal';
 
 const { Content } = Layout;
@@ -80,6 +80,7 @@ const EvolutionResult = () => {
     const [isSeatOrderDirty, setIsSeatOrderDirty] = useState(false);
     const svgRef = useRef(null);
     const prevHoveredSeatRef = useRef(null);
+    const studentToSeatIdMapRef = useRef({});
 
     // 直接 DOM 操作：高亮/取消高亮 SVG 中的座位
     const highlightSeat = useCallback((seatId) => {
@@ -105,18 +106,39 @@ const EvolutionResult = () => {
         prevHoveredSeatRef.current = seatId;
     }, []);
 
-    // 鼠标进入列表项
-    const handleItemMouseEnter = useCallback((studentName) => {
-        const seatId = studentToSeatIdMapRef.current?.[studentName];
-        if (seatId) {
-            highlightSeat(seatId);
-        }
-    }, [highlightSeat]);
-
-    // 鼠标离开列表项
-    const handleItemMouseLeave = useCallback(() => {
-        highlightSeat(null);
-    }, [highlightSeat]);
+    const {
+        handleItemMouseEnter,
+        handleItemMouseLeave,
+        handleExport,
+        handleSeatChange,
+    } = useMemo(
+        () => createEvolutionResultHandlers({
+            highlightSeat,
+            studentToSeatIdMapRef,
+            exportName,
+            status,
+            classroom,
+            location,
+            editableSeatOrder,
+            setExporting,
+            setExportModalOpen,
+            setExportName,
+            setEditableSeatOrder,
+            setIsSeatOrderDirty,
+            invoke,
+            message,
+        }),
+        [
+            highlightSeat,
+            exportName,
+            status,
+            classroom,
+            location,
+            editableSeatOrder,
+            invoke,
+            message,
+        ],
+    );
 
     useEffect(() => {
         statusRef.current = status;
@@ -214,39 +236,6 @@ const EvolutionResult = () => {
     }, [classroom]);
     const assignedCount = Object.keys(editableSeatOrder || {}).length;
 
-    // 导出座位表
-    const handleExport = async () => {
-        const name = exportName.trim();
-        if (!name) {
-            message.warning('请输入座位表名称');
-            return;
-        }
-
-        setExporting(true);
-        try {
-            // 获取 SVG 预览内容
-            const svgElement = document.querySelector('.evolution-result-svg');
-            const previewSvg = svgElement ? new XMLSerializer().serializeToString(svgElement) : null;
-
-            const result = await invoke('export_seat_table', {
-                payload: {
-                    name,
-                    classroom_name: status?.classroom_name || classroom?.name || '未命名教室',
-                    classroom_sgid: status?.classroom_sgid || location.state?.classroomSgid || classroom?.sgid || '',
-                    seat_order: editableSeatOrder,
-                    preview_svg: previewSvg,
-                },
-            });
-
-            message.success(`座位表「${name}」已导出成功！`);
-            setExportModalOpen(false);
-            setExportName('');
-        } catch (err) {
-            message.error('导出失败：' + String(err));
-        } finally {
-            setExporting(false);
-        }
-    };
 
     // 打开导出弹窗
     const openExportModal = () => {
@@ -263,7 +252,6 @@ const EvolutionResult = () => {
     }, [editableSeatOrder]);
 
     // 构建学生姓名 -> 座位ID 的反向映射，通过 ref 存储供 DOM 操作使用
-    const studentToSeatIdMapRef = useRef({});
     useEffect(() => {
         const map = {};
         Object.entries(editableSeatOrder || {}).forEach(([seatId, studentName]) => {
@@ -283,27 +271,6 @@ const EvolutionResult = () => {
         return Array.from(merged).sort((a, b) => Number(a) - Number(b));
     }, [classroom, editableSeatOrder]);
 
-    const handleSeatChange = useCallback((studentName, nextSeatId) => {
-        setEditableSeatOrder((prev) => {
-            const next = { ...(prev || {}) };
-            const currentSeatId = Object.keys(next).find((id) => next[id] === studentName);
-
-            if (currentSeatId === nextSeatId) return next;
-
-            const existingStudent = next[nextSeatId];
-            if (currentSeatId) {
-                delete next[currentSeatId];
-            }
-
-            if (existingStudent && currentSeatId) {
-                next[currentSeatId] = existingStudent;
-            }
-
-            next[nextSeatId] = studentName;
-            return next;
-        });
-        setIsSeatOrderDirty(true);
-    }, []);
 
     // 判断是否从 Dashboard 进入（没有 seatOrder 即为 Dashboard 来源，仅支持查看）
     const fromDashboard = useMemo(() => {

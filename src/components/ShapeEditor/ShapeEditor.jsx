@@ -2,6 +2,8 @@ import React, { useRef, useState, useEffect } from 'react'
 import { Button, Divider, Space, Typography, message } from 'antd'
 import FabricCanvas from './FabricCanvas'
 import './shapeEditor.css'
+import { useMemo } from 'react'
+import { createShapeEditorHandlers } from '../../api/shapeEditor/shapeEditorActions'
 
 const ShapeEditor = ({ isOpen, onClose, onSaveShape, initialSVG }) => {
     const fcRef = useRef(null)
@@ -19,60 +21,25 @@ const ShapeEditor = ({ isOpen, onClose, onSaveShape, initialSVG }) => {
 
     if (!isOpen) return null
 
-    const handleAddRect = () => fcRef.current?.addRect()
-    const handleAddCircle = () => fcRef.current?.addCircle()
-    const handleAddPolygon = () => fcRef.current?.addPolygon()
-    const handleClear = () => fcRef.current?.clear()
-    const handleDelete = () => fcRef.current?.deleteActive()
-    const toggleFree = () => {
-        const next = !freeDraw
-        setFreeDraw(next)
-        fcRef.current?.toggleFreeDrawing(next)
-    }
-    
-    const handleSaveShape = async () => {
-        const svg = await fcRef.current?.exportCroppedSVG?.() || fcRef.current?.exportSVG()
-        if (svg) {
-            if (onSaveShape) onSaveShape(svg)
-            message.success('形状已保存')
-            onClose()
-        } else {
-            message.error('没有形状可保存')
-        }
-    }
-
-    const handleExportJSON = () => {
-        const json = fcRef.current?.exportJSON()
-        const win = window.open('about:blank')
-        if (win) {
-            win.document.write('<pre>' + escapeHtml(json) + '</pre>')
-            win.document.title = 'Canvas JSON'
-        }
-    }
-
-    const handleLoadJSON = async () => {
-        const txt = prompt('Paste canvas JSON here')
-        if (txt) {
-            try {
-                fcRef.current?.loadJSON(txt)
-                message.success('JSON已加载')
-            } catch (e) {
-                message.error('JSON加载失败')
-            }
-        }
-    }
-
-    const handleLoadSVG = async () => {
-        const txt = prompt('Paste SVG XML here')
-        if (txt) {
-            try {
-                fcRef.current?.loadSVG(txt)
-                message.success('SVG已加载')
-            } catch (e) {
-                message.error('SVG加载失败')
-            }
-        }
-    }
+    const {
+        handleAddRect,
+        handleAddCircle,
+        handleAddPolygon,
+        handleClear,
+        handleDelete,
+        toggleFree,
+        handleSaveShape,
+        handleExportJSON,
+        handleLoadJSON,
+        handleLoadSVG
+    } = useMemo(() => createShapeEditorHandlers({
+        fcRef,
+        freeDraw,
+        setFreeDraw,
+        onSaveShape,
+        onClose,
+        message
+    }), [fcRef, freeDraw, setFreeDraw, onSaveShape, onClose, message])
 
     return (
         <div className="shape-editor-overlay">
@@ -114,10 +81,6 @@ const ShapeEditor = ({ isOpen, onClose, onSaveShape, initialSVG }) => {
             </div>
         </div>
     )
-}
-
-function escapeHtml(s) {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 export default ShapeEditor

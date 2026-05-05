@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Input, Form, Select, Slider, Space, Typography } from 'antd';
-import { buildLabelSubmission } from '../../api/makeSeatList/labelModalActions';
+import { createLabelModalHandlers } from '../../api/makeSeatList/labelModalActions';
 
 const { Text } = Typography;
 
@@ -29,22 +29,17 @@ const AddLabelModal = ({
         }
     }, [open, initialValue, initialColor, initialFactor, initialWeight, form]);
 
-    const handleOk = async () => {
-        try {
-            const values = await form.validateFields();
-            const submission = buildLabelSubmission({ values, initialColor, initialFactor, initialWeight });
-            const value = submission.value;
-            if (!value) return;
-
-            setSubmitting(true);
-            await onOk?.({
-                ...submission,
-            });
-            form.resetFields();
-        } finally {
-            setSubmitting(false);
-        }
-    };
+    const { handleOk } = React.useMemo(
+        () => createLabelModalHandlers({
+            form,
+            initialColor,
+            initialFactor,
+            initialWeight,
+            onOk,
+            setSubmitting,
+        }),
+        [form, initialColor, initialFactor, initialWeight, onOk],
+    );
 
     return (
         <Modal

@@ -1,5 +1,6 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useMemo } from "react";
 import { fabric } from "fabric";
+import { createFabricCanvasHandlers } from "../../api/newclassroom/fabricCanvasActions";
 
 const getConfigNumber = (config, key, fallback) => {
     const value = Number(config?.[key]);
@@ -225,18 +226,12 @@ const FabricClassroomCanvas = forwardRef(({
     useEffect(() => {
         if (!canvasRef.current) return;
         const canvas = canvasRef.current;
+        const handlers = createFabricCanvasHandlers({ elementsRef, onSelectItem });
 
-        const handleSelect = (evt) => {
-            const target = evt?.selected?.[0] || evt?.target;
-            const id = target?.data?.id;
-            if (id == null) return;
-            const item = elementsRef.current.find(e => e.id === id);
-            if (item) onSelectItem?.(item);
-        };
-
-        const handleClear = () => {
+        const handleSelect = handlers.handleSelect;
+        const handleClear = (evt) => {
             if (suppressClearRef.current) return;
-            onSelectItem?.(null);
+            handlers.handleClear(evt);
         };
 
         canvas.on("selection:created", handleSelect);

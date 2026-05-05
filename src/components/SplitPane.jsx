@@ -1,5 +1,6 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import useRafThrottle from '../hooks/useRafThrottle';
+import { createSplitPaneHandlers } from '../api/shared/splitPaneActions';
 
 /**
  * SplitPane — 可拖动的垂直分隔面板
@@ -29,12 +30,6 @@ const SplitPane = ({
     const [ratio, setRatio] = useState(defaultRatio);
     const [isDragging, setIsDragging] = useState(false);
 
-    // 拖动逻辑
-    const handleMouseDown = useCallback((e) => {
-        e.preventDefault();
-        setIsDragging(true);
-    }, []);
-
     const updateRatio = useRafThrottle((clientY) => {
         if (!isDragging || !containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
@@ -57,13 +52,10 @@ const SplitPane = ({
         setRatio(Math.max(0, Math.min(1, newRatio)));
     });
 
-    const handleMouseMove = useCallback((e) => {
-        updateRatio(e.clientY);
-    }, [updateRatio]);
-
-    const handleMouseUp = useCallback(() => {
-        setIsDragging(false);
-    }, []);
+    const { handleMouseDown, handleMouseMove, handleMouseUp } = React.useMemo(
+        () => createSplitPaneHandlers({ setIsDragging, updateRatio }),
+        [setIsDragging, updateRatio],
+    );
 
     // 全局监听 mouseup / mousemove 防止拖动过快丢失事件
     useEffect(() => {

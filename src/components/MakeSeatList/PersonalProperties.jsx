@@ -28,6 +28,7 @@ import {
     createDefaultFactors,
     normalizeWeight,
 } from '../../api/makeSeatList/factorUtils';
+import { createPersonalPropertiesHandlers } from '../../api/makeSeatList/personalPropertiesActions';
 
 const { Text, Title } = Typography;
 
@@ -96,81 +97,29 @@ const PersonalProperties = ({
     // 判断某人是否已有数据
     const hasData = (personName) => allData.some(d => d.name === personName);
 
-    // 更新当前选中人的某个 factor 权重
-    const handleFactorChange = (factorKey, value) => {
-        setCurrentFactors(prev => ({ ...prev, [factorKey]: value }));
-    };
-
-    // 保存当前选中人的数据
-    const handleSavePerson = () => {
-        if (!selectedName || !currentFactors) return;
-
-        setAllData(prev => {
-            const idx = prev.findIndex(d => d.name === selectedName);
-            const entry = { name: selectedName, factors: { ...currentFactors } };
-            if (idx >= 0) {
-                const next = [...prev];
-                next[idx] = entry;
-                return next;
-            }
-            return [...prev, entry];
-        });
-        message.success(`已保存「${selectedName}」的个人属性`);
-    };
-
-    // 从标签加载——打开选择弹窗
-    const handleLoadFromLabel = () => {
-        if (!labels || labels.length === 0) {
-            message.warning('暂无可用标签，请先在标签编辑器中创建标签');
-            return;
-        }
-        setLabelLoadOpen(true);
-    };
-
-    // 确认从某个标签加载
-    const confirmLoadLabel = (label) => {
-        if (!currentFactors) return;
-        setCurrentFactors(prev => ({
-            ...prev,
-            [label.factor]: normalizeWeight(label.weight ?? 0.5),
-        }));
-        setLabelLoadOpen(false);
-        message.success(`已从标签「${label.name}」加载权重 ${label.weight?.toFixed(2) || 0.5}`);
-    };
-
-    // 重置当前选中人的权重为默认值
-    const handleResetFactors = () => {
-        if (!selectedName) return;
-        setCurrentFactors(createDefaultFactors());
-    };
-
-    // 删除当前选中人的数据
-    const handleRemovePerson = () => {
-        if (!selectedName) return;
-        setAllData(prev => prev.filter(d => d.name !== selectedName));
-        setCurrentFactors(createDefaultFactors());
-        message.success(`已移除「${selectedName}」的数据`);
-    };
-
-    // 保存全部 & 关闭
-    const handleSaveAll = () => {
-        let updated = allData;
-
-        if (selectedName && currentFactors) {
-            const idx = allData.findIndex(d => d.name === selectedName);
-            const entry = { name: selectedName, factors: { ...currentFactors } };
-            if (idx >= 0) {
-                updated = [...allData];
-                updated[idx] = entry;
-            } else {
-                updated = [...allData, entry];
-            }
-            setAllData(updated);
-        }
-
-        onSave?.(updated);
-        onCancel?.();
-    };
+    const {
+        handleFactorChange,
+        handleSavePerson,
+        handleLoadFromLabel,
+        confirmLoadLabel,
+        handleResetFactors,
+        handleRemovePerson,
+        handleSaveAll,
+    } = useMemo(
+        () => createPersonalPropertiesHandlers({
+            selectedName,
+            currentFactors,
+            allData,
+            labels,
+            setCurrentFactors,
+            setAllData,
+            setLabelLoadOpen,
+            message,
+            onSave,
+            onCancel,
+        }),
+        [selectedName, currentFactors, allData, labels, message, onSave, onCancel],
+    );
 
     return (
         <>

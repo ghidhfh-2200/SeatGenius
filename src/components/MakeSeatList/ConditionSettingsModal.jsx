@@ -37,23 +37,15 @@ import {
 } from '@ant-design/icons';
 import { invoke } from '@tauri-apps/api/core';
 import {
-    ROW_ZONES,
-    COL_ZONES,
-    SPECIAL_POSITIONS,
     FACTOR_OPTIONS,
     FACTOR_LABEL_MAP,
     ADJACENCY_TYPES,
-    FACTOR_CONDITION_TEMPLATES,
     createDefaultPositionRewards,
     createDefaultSpecialRewards,
     createDefaultAdjacencyRewards,
-    createDefaultFactorRangeRewards,
     normalizeValue,
-    getConfigNumber,
-    getElementSize,
-    resolveClassroomPosition,
-    parseConditions,
 } from '../../api/makeSeatList/conditionUtils';
+import { createConditionSettingsHandlers } from '../../api/makeSeatList/conditionSettingsActions';
 
 const { Text, Title } = Typography;
 
@@ -101,22 +93,72 @@ const ConditionSettingsModal = ({
     const [seatRewards, setSeatRewards] = useState({}); // { seatId: rewardValue }
     const classroomAutoSelectedRef = useRef(false);
 
-    // ========== 加载教室列表 ==========
-    const loadClassrooms = async () => {
-        setClassroomLoading(true);
-        try {
-            const data = await invoke('get_dashboard_records');
-            const classroomRecords = Array.isArray(data) ? data : [];
-            // 只排除数据文件不存在的教室；预览缺失的教室仍可用于座位识别
-            const classroomsOnly = classroomRecords.filter(record => record.data_file_exists !== false);
-            setClassrooms(classroomsOnly);
-        } catch (error) {
-            console.error('加载教室列表失败', error);
-            message.error('加载教室列表失败：' + String(error));
-        } finally {
-            setClassroomLoading(false);
-        }
-    };
+    const handlers = useMemo(
+        () => createConditionSettingsHandlers({
+            conditions,
+            positionRewards,
+            specialRewards,
+            factorRewards,
+            adjacencyRewards,
+            seatRewards,
+            seats,
+            selectedClassroom,
+            selectedFactor,
+            editingFactorRange,
+            factorRangeForm,
+            onSave,
+            onCancel,
+            invoke,
+            message,
+            setClassroomLoading,
+            setClassrooms,
+            setSelectedClassroom,
+            setSeats,
+            setSeatRewards,
+            setPositionRewards,
+            setSpecialRewards,
+            setFactorRewards,
+            setAdjacencyRewards,
+            setSelectedFactor,
+            setFactorRangeModalOpen,
+            setEditingFactorRange,
+        }),
+        [
+            conditions,
+            positionRewards,
+            specialRewards,
+            factorRewards,
+            adjacencyRewards,
+            seatRewards,
+            seats,
+            selectedClassroom,
+            selectedFactor,
+            editingFactorRange,
+            factorRangeForm,
+            onSave,
+            onCancel,
+            message,
+            invoke,
+        ],
+    );
+
+    const {
+        loadClassrooms,
+        handleSelectClassroom,
+        handleSeatRewardChange,
+        handleBatchSetRewards,
+        handleBatchSetByZone,
+        handlePositionChange,
+        handleSpecialChange,
+        handleSelectFactor,
+        handleAddFactorRange,
+        handleEditFactorRange,
+        handleDeleteFactorRange,
+        handleSaveFactorRange,
+        handleAdjacencyChange,
+        handleSave,
+        handleResetAll,
+    } = handlers;
 
     useEffect(() => {
         if (!open) {
@@ -151,269 +193,6 @@ const ConditionSettingsModal = ({
         handleSelectClassroom(matched);
     }, [open, classrooms, conditions, selectedClassroom]);
 
-    // ========== 选择教室并识别座位 ==========
-    const handleSelectClassroom = async (classroom) => {
-        setSelectedClassroom(classroom);
-        setSeats([]);
-        setSeatRewards({});
-        setClassroomLoading(true);
-        try {
-            // 通过后端加载完整的教室数据（包含 elements）
-            const payload = await invoke('load_classroom', { sgid: classroom.sgid });
-            const classroomData = payload?.classroom_data || {};
-            const elements = classroomData.elements || [];
-            const config = classroomData.config || {};
-            
-            if (!elements || elements.length === 0) {
-                message.warning('该教室数据中没有找到任何元素');
-                return;
-            }
-            
-            // 从教室数据中识别座位
-            const identifiedSeats = identifySeats(elements, config);
-            setSeats(identifiedSeats);
-            
-            if (identifiedSeats.length === 0) {
-                message.warning('未识别到座位元素，请确认教室中包含 seat/chair/desk 类型的元素');
-                return;
-            }
-            
-            // 初始化座位奖励值（使用默认值0.5）
-            const initialRewards = {};
-            identifiedSeats.forEach(seat => {
-                initialRewards[seat.id] = 0.5;
-            });
-            setSeatRewards(initialRewards);
-            
-            message.success(`成功识别 ${identifiedSeats.length} 个座位`);
-        } catch (error) {
-            console.error('识别座位失败', error);
-            message.error('识别座位失败：' + String(error));
-        } finally {
-            setClassroomLoading(false);
-        }
-    };
-
-    // ========== 识别座位函数 ==========
-    const identifySeats = (elements, config = {}) => {
-        const seats = [];
-        const seatTypes = ['seat', 'chair'];
-        
-        elements.forEach(el => {
-            if (seatTypes.includes(el.type)) {
-                const pos = resolveClassroomPosition(el, elements, config);
-                seats.push({
-                    id: el.id,
-                    type: el.type,
-                    x: pos.x,
-                    y: pos.y,
-                    width: el.width || 0,
-                    height: el.height || 0,
-                    label: `${el.type}_${el.id}`,
-                    row: calculateRow(pos.y),
-                    col: calculateCol(pos.x),
-                });
-            }
-        });
-        
-        // 按行列排序
-        return seats.sort((a, b) => {
-            if (a.row !== b.row) return a.row - b.row;
-            return a.col - b.col;
-        });
-    };
-
-    // ========== 计算座位所在的行 ==========
-    const calculateRow = (y) => {
-        // 根据y坐标计算行号（假设每行高度约80px）
-        return Math.floor(y / 80) + 1;
-    };
-
-    // ========== 计算座位所在的列 ==========
-    const calculateCol = (x) => {
-        // 根据x坐标计算列号（假设每列宽度约80px）
-        return Math.floor(x / 80) + 1;
-    };
-
-    // ========== 更新座位奖励值 ==========
-    const handleSeatRewardChange = (seatId, value) => {
-        setSeatRewards(prev => ({
-            ...prev,
-            [seatId]: normalizeValue(value)
-        }));
-    };
-
-    // ========== 批量设置座位奖励值 ==========
-    const handleBatchSetRewards = (value) => {
-        const newRewards = {};
-        seats.forEach(seat => {
-            newRewards[seat.id] = normalizeValue(value);
-        });
-        setSeatRewards(newRewards);
-        message.success(`已将所有座位奖励值设置为 ${value.toFixed(2)}`);
-    };
-
-    // ========== 根据行列区域批量设置 ==========
-    const handleBatchSetByZone = (rowZone, colZone, value) => {
-        const newRewards = { ...seatRewards };
-        seats.forEach(seat => {
-            const seatRowZone = getRowZone(seat.row);
-            const seatColZone = getColZone(seat.col);
-            if (seatRowZone === rowZone && seatColZone === colZone) {
-                newRewards[seat.id] = normalizeValue(value);
-            }
-        });
-        setSeatRewards(newRewards);
-        message.success(`已将 ${rowZone}-${colZone} 区域座位奖励值设置为 ${value.toFixed(2)}`);
-    };
-
-    // ========== 获取座位所在的行区域 ==========
-    const getRowZone = (row) => {
-        if (row <= 2) return 'front';
-        if (row <= 4) return 'mid_front';
-        if (row <= 6) return 'middle';
-        if (row <= 8) return 'mid_back';
-        return 'back';
-    };
-
-    // ========== 获取座位所在的列区域 ==========
-    const getColZone = (col) => {
-        const totalCols = Math.max(...seats.map(s => s.col));
-        const third = Math.ceil(totalCols / 3);
-        if (col <= third) return 'left';
-        if (col <= third * 2) return 'center';
-        return 'right';
-    };
-
-    // ========== 1. 位置奖励处理 ==========
-
-    const handlePositionChange = (key, value) => {
-        setPositionRewards(prev => ({ ...prev, [key]: normalizeValue(value) }));
-    };
-
-    const handleSpecialChange = (key, value) => {
-        setSpecialRewards(prev => ({ ...prev, [key]: normalizeValue(value) }));
-    };
-
-    // ========== 2. 个人因子奖励处理 ==========
-
-    const handleSelectFactor = (factorKey) => {
-        setSelectedFactor(factorKey);
-        if (!factorRewards[factorKey]) {
-            setFactorRewards(prev => ({
-                ...prev,
-                [factorKey]: createDefaultFactorRangeRewards(factorKey),
-            }));
-        }
-    };
-
-    const handleAddFactorRange = () => {
-        if (!selectedFactor) return;
-        setEditingFactorRange(null);
-        factorRangeForm.resetFields();
-        factorRangeForm.setFieldsValue({
-            min: 0,
-            max: 1,
-            label: '',
-            reward: 0.5,
-        });
-        setFactorRangeModalOpen(true);
-    };
-
-    const handleEditFactorRange = (rangeIndex) => {
-        const ranges = factorRewards[selectedFactor] || [];
-        const range = ranges[rangeIndex];
-        if (!range) return;
-        setEditingFactorRange(rangeIndex);
-        factorRangeForm.setFieldsValue({
-            min: range.min,
-            max: range.max,
-            label: range.label,
-            reward: range.reward,
-        });
-        setFactorRangeModalOpen(true);
-    };
-
-    const handleDeleteFactorRange = (rangeIndex) => {
-        if (!selectedFactor) return;
-        setFactorRewards(prev => ({
-            ...prev,
-            [selectedFactor]: (prev[selectedFactor] || []).filter((_, i) => i !== rangeIndex),
-        }));
-    };
-
-    const handleSaveFactorRange = () => {
-        if (!selectedFactor) return;
-        const values = factorRangeForm.getFieldsValue();
-        const min = Number(values.min);
-        const max = Number(values.max);
-        const label = String(values.label || '').trim();
-        const reward = normalizeValue(values.reward);
-
-        if (min < 0 || min > 1 || max < 0 || max > 1) {
-            message.warning('区间值范围应在 0~1 之间');
-            return;
-        }
-        if (min > max) {
-            message.warning('最小值不能大于最大值');
-            return;
-        }
-        if (!label) {
-            message.warning('请输入区间标签');
-            return;
-        }
-
-        const newRange = { min, max, label, reward, id: `${selectedFactor}-${min}-${max}-${Date.now()}` };
-
-        setFactorRewards(prev => {
-            const current = [...(prev[selectedFactor] || [])];
-            if (editingFactorRange !== null) {
-                current[editingFactorRange] = newRange;
-            } else {
-                current.push(newRange);
-            }
-            return { ...prev, [selectedFactor]: current };
-        });
-
-        setFactorRangeModalOpen(false);
-        setEditingFactorRange(null);
-        factorRangeForm.resetFields();
-    };
-
-    // ========== 3. 相邻关系奖励处理 ==========
-
-    const handleAdjacencyChange = (key, value) => {
-        setAdjacencyRewards(prev => ({ ...prev, [key]: normalizeValue(value) }));
-    };
-
-    // ========== 保存 ==========
-
-    const handleSave = () => {
-        const data = {
-            positionRewards,
-            specialRewards,
-            factorRewards,
-            adjacencyRewards,
-            seatRewards,  // 新增：座位权重数据
-            seatIds: seats.map(seat => String(seat.id)),
-            classroomSgid: selectedClassroom?.sgid || null,  // 新增：关联的教室ID
-        };
-        onSave?.(data);
-        onCancel?.();
-    };
-
-    // ========== 重置 ==========
-
-    const handleResetAll = () => {
-        setPositionRewards(createDefaultPositionRewards());
-        setSpecialRewards(createDefaultSpecialRewards());
-        setFactorRewards({});
-        setAdjacencyRewards(createDefaultAdjacencyRewards());
-        setSeatRewards({});
-        setSeats([]);
-        setSelectedClassroom(null);
-        message.success('已重置所有奖励值');
-    };
 
     // ========== 颜色辅助 ==========
 

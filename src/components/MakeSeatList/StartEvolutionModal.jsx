@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, Space, Tag, Typography } from 'antd';
+import { createStartEvolutionHandlers } from '../../api/makeSeatList/startEvolutionActions';
 
 const { Text } = Typography;
 
@@ -10,11 +11,10 @@ const StartEvolutionModal = ({
     onCancel,
     onOk,
 }) => {
-    const handleOk = () => {
-        if (classroom) {
-            onOk?.(classroom);
-        }
-    };
+    const { handleOk } = React.useMemo(
+        () => createStartEvolutionHandlers({ classroom, onOk }),
+        [classroom, onOk],
+    );
 
     return (
         <Modal
