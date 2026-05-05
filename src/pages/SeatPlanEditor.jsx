@@ -113,6 +113,10 @@ const SeatPlanEditor = () => {
     const [profileList, setProfileList] = useState([]);
     const [profileLoading, setProfileLoading] = useState(false);
     const [profileSaving, setProfileSaving] = useState(false);
+    const [profileUpdating, setProfileUpdating] = useState(false);
+    const [activeProfileId, setActiveProfileId] = useState(null);
+    const [activeProfileName, setActiveProfileName] = useState('');
+    const [activeProfileDescription, setActiveProfileDescription] = useState('');
 
     // ========== 上传配置 ==========
     const uploadProps = {
@@ -384,7 +388,11 @@ const SeatPlanEditor = () => {
         }
     };
 
-    const handleLoadProfile = async (profileId) => {
+    const handleLoadProfile = async (profile) => {
+        const profileId = typeof profile === 'object' ? profile.id : profile;
+        const matched = typeof profile === 'object'
+            ? profile
+            : profileList.find(item => item.id === profileId);
         setProfileLoading(true);
         try {
             const data = await invoke('load_profile', { id: profileId });
@@ -404,6 +412,9 @@ const SeatPlanEditor = () => {
                     console.error('保存加载的标签失败', err);
                 }
             }
+            setActiveProfileId(profileId);
+            setActiveProfileName(matched?.name || '');
+            setActiveProfileDescription(matched?.description || '');
             message.success('档案加载成功');
             setLoadProfileModalOpen(false);
         } catch (error) {
@@ -411,6 +422,29 @@ const SeatPlanEditor = () => {
             message.error('加载档案失败：' + String(error));
         } finally {
             setProfileLoading(false);
+        }
+    };
+
+    const handleUpdateActiveProfile = async () => {
+        if (!activeProfileId) {
+            message.warning('请先加载一个档案');
+            return;
+        }
+        setProfileUpdating(true);
+        try {
+            const rewardConfig = conditions.find(c => c._isRewardConfig);
+            const data = buildProfileData({ rewardConfig, names, personalAttrs, conditions, labels });
+            await invoke('update_profile', {
+                id: activeProfileId,
+                data,
+            });
+            message.success(`已更新档案「${activeProfileName || '未命名档案'}」`);
+            loadProfileList();
+        } catch (error) {
+            console.error('更新档案失败', error);
+            message.error('更新档案失败：' + String(error));
+        } finally {
+            setProfileUpdating(false);
         }
     };
 
@@ -489,6 +523,15 @@ const SeatPlanEditor = () => {
                                 }}
                             >
                                 保存为档案
+                            </Button>
+                            <Button
+                                icon={<SaveOutlined />}
+                                type="dashed"
+                                disabled={!activeProfileId}
+                                loading={profileUpdating}
+                                onClick={handleUpdateActiveProfile}
+                            >
+                                {activeProfileId ? `将更改保存到此档案${activeProfileName ? `（${activeProfileName}）` : ''}` : '将更改保存到此档案'}
                             </Button>
                             <Button
                                 icon={<FolderOpenOutlined />}

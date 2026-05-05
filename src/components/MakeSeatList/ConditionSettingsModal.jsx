@@ -197,7 +197,7 @@ const ConditionSettingsModal = ({
     // ========== 识别座位函数 ==========
     const identifySeats = (elements, config = {}) => {
         const seats = [];
-        const seatTypes = ['seat', 'chair', 'desk'];
+        const seatTypes = ['seat', 'chair'];
         
         elements.forEach(el => {
             if (seatTypes.includes(el.type)) {

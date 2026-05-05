@@ -88,7 +88,7 @@ const LoadProfileModal = ({
                                 width: 140,
                                 render: (_, record) => (
                                     <Space>
-                                        <Button type="primary" size="small" onClick={() => onLoad?.(record.id)}>
+                                        <Button type="primary" size="small" onClick={() => onLoad?.(record)}>
                                             加载
                                         </Button>
                                         <Popconfirm title="确认删除此档案？" onConfirm={() => onDelete?.(record.id)}>

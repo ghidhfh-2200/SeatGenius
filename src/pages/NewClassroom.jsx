@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import useRafState from "../hooks/useRafState";
 import useRafThrottle from "../hooks/useRafThrottle";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Layout, Typography, Card, Button, Tabs, Checkbox, Input, message, Tree, Tag } from "antd";
+import { Layout, Typography, Card, Button, Tabs, Checkbox, Input, message, Tree, Tag, Modal } from "antd";
 import { invoke } from "@tauri-apps/api/core";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import "./NewClassroom.css";
@@ -470,6 +470,22 @@ const NewClassroom = () => {
         setIsPanelCollapsed(prev => !prev);
     };
 
+    const handleBackToHome = () => {
+        const hasUnsavedChanges = elements.length > 0 && JSON.stringify(elements) !== JSON.stringify(savedElements);
+        if (hasUnsavedChanges) {
+            Modal.confirm({
+                title: '是否退出？',
+                content: '画布中有未保存的元素，退出将丢失当前进度。',
+                okText: '确认退出',
+                cancelText: '取消',
+                okButtonProps: { danger: true },
+                onOk: () => navigate('/')
+            });
+        } else {
+            navigate('/');
+        }
+    };
+
     const handleOpenExport = () => {
         if (elements.length === 0) {
             message.warning("当前没有可导出的对象");
@@ -858,7 +874,7 @@ return (
     <Layout className="seat-layout">
         <Content className="seat-content">
             <div className="seat-page-toolbar">
-                <Button onClick={() => navigate('/')}>返回主页</Button>
+                <Button onClick={handleBackToHome}>返回主页</Button>
                 <div style={{ display: 'flex', alignItems: 'center', marginLeft: 16 }}>
                     <span style={{ marginRight: 8 }}>画布宽度:</span>
                     <Input

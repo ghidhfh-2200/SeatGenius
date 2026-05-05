@@ -82,6 +82,51 @@ pub fn save_profile(name: String, description: String, data: ProfileData) -> Res
     })
 }
 
+/// 更新档案（覆盖原档案文件）
+#[tauri::command]
+pub fn update_profile(id: i64, data: ProfileData) -> Result<ProfileRecord, String> {
+    init_db::init_db()?;
+
+    let conn = Connection::open(init_db::database_path()).map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT Name, File, CreateTime, Description FROM profile WHERE ID = ?1")
+        .map_err(|e| e.to_string())?;
+
+    let result = stmt
+        .query_row([id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        })
+        .map_err(|e| format!("未找到档案记录: {}", e))?;
+
+    let (name, file, create_time, description) = result;
+    let path = init_db::profiles_dir().join(&file);
+
+    let content = serde_json::to_string_pretty(&data)
+        .map_err(|e| format!("序列化档案数据失败: {}", e))?;
+    fs::write(&path, content).map_err(|e| format!("写入档案文件失败: {}", e))?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE profile SET UpdateTime = ?1 WHERE ID = ?2",
+        rusqlite::params![now.as_str(), id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(ProfileRecord {
+        id,
+        name,
+        file,
+        create_time,
+        update_time: now,
+        description,
+    })
+}
+
 /// 获取所有档案列表
 #[tauri::command]
 pub fn get_profile_list() -> Result<Vec<ProfileRecord>, String> {
