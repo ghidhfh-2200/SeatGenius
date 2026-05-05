@@ -213,7 +213,7 @@ const Dashboard = () => {
                             <Statistic
                                 title={<Text type="secondary" strong>创建了教室</Text>}
                                 value={classrooms.length}
-                                styles={{ content: { value: { color: '#1677ff', fontSize: '32px', fontWeight: 'bold' } } }}
+                                valueStyle={{ color: '#1677ff', fontSize: '32px', fontWeight: 'bold' }}
                             />
                         </Card>
                     </Col>
@@ -222,7 +222,7 @@ const Dashboard = () => {
                             <Statistic
                                 title={<Text type="secondary" strong>创建了座位表</Text>}
                                 value={seatTables.length}
-                                styles={{ content: { value: { color: '#52c41a', fontSize: '32px', fontWeight: 'bold' } } }}
+                                valueStyle={{ color: '#52c41a', fontSize: '32px', fontWeight: 'bold' }}
                             />
                         </Card>
                     </Col>

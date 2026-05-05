@@ -89,6 +89,17 @@ const EditComponentModal = ({
 
     const visibleSmallGroups = isDraftBigGroup ? draftSmallGroups : childSmallGroups;
 
+    // 获取草稿大组中某个小组的座位
+    const getDraftSeats = (sgId) => {
+        const sg = draftSmallGroups.find(item => item.id === sgId);
+        return Array.isArray(sg?.seats) ? sg.seats : [];
+    };
+
+    // 获取已保存元素中某个小组的子座位
+    const getChildSeats = (sgId) => {
+        return elements.filter(e => e.type === 'seat' && e.parentId === sgId);
+    };
+
     React.useEffect(() => {
         if (!isModalVisible || !isDraftBigGroup) {
             setDraftSmallGroups([]);
