@@ -480,6 +480,7 @@ def run_evolution(payload_json: str, progress_callback=None):
     EVOLUTION_PROGRESS["best_fitness"] = float(round(best_fitness, 6))
     EVOLUTION_PROGRESS["message"] = "DEAP NSGA-III 遗传算法已完成"
 
+    print(seat_order)
     return {
         "generation": generations,
         "best_fitness": float(round(best_fitness, 6)),

@@ -36,8 +36,28 @@ export const createDashboardHandlers = ({ invoke, message, setLoading, setSeatTa
                         })
                         .finally(() => setLoading(false));
                 }
-                
+
             })
         }
     },
+    loadRecords: async () => {
+        setLoading(true);
+        try {
+            const [classroomData, seatTableData] = await Promise.all([
+                invoke('get_dashboard_records'),
+                invoke('get_seat_tables'),
+            ]);
+            const classroomRecords = Array.isArray(classroomData) ? classroomData : [];
+            const seatTableRecords = Array.isArray(seatTableData) ? seatTableData : [];
+            setClassrooms(classroomRecords);
+            setSeatTables(seatTableRecords);
+        } catch (error) {
+            console.error('读取仪表盘数据失败', error);
+            message.error('读取仪表盘数据失败：' + String(error));
+            setClassrooms([]);
+            setSeatTables([]);
+        } finally {
+            setLoading(false);
+        }
+    }
 });

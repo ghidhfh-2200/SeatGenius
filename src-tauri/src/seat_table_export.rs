@@ -43,12 +43,13 @@ pub struct LoadedSeatTableResult {
 }
 
 /// 获取 seattable 数据目录
-fn seattable_dir() -> PathBuf {
+pub fn seattable_dir() -> PathBuf {
     init_db::seattables_dir()
 }
 
 /// 获取 seattable-preview 目录
-fn seattable_preview_dir() -> PathBuf {
+#[tauri::command]
+pub fn seattable_preview_dir() -> PathBuf {
     init_db::seattable_previews_dir()
 }
 
@@ -192,87 +193,6 @@ pub fn load_seat_table(sgid: String) -> Result<LoadedSeatTableResult, String> {
     })
 }
 
-/// 从数据库获取所有座位表记录（供 Dashboard 使用）
-#[tauri::command]
-pub fn get_seat_tables() -> Result<Vec<super::dashboard_records::DashboardRecord>, String> {
-    use super::dashboard_records::DashboardRecord;
-
-    init_db::init_db()?;
-
-    let conn = Connection::open(init_db::database_path()).map_err(|err| err.to_string())?;
-    let mut stmt = conn
-        .prepare(
-            "SELECT SGID, Name, File, ClassroomName, StudentCount, CreateTime, PreviewFile
-             FROM seattables
-             ORDER BY CreateTime DESC",
-        )
-        .map_err(|err| err.to_string())?;
-
-    let records = stmt
-        .query_map([], |row| {
-            let sgid: String = row.get(0)?;
-            let encoded_name: String = row.get(1)?;
-            let data_file: String = row.get(2)?;
-            let _encoded_classroom: String = row.get(3)?;
-            let _student_count: i64 = row.get(4)?;
-            let create_time: String = row.get(5)?;
-            let preview_file: String = row.get::<_, String>(6).unwrap_or_default();
-
-            let data_path = seattable_dir().join(&data_file);
-            let preview_path = if preview_file.is_empty() {
-                // 兼容旧数据：尝试从 seattable 目录找同名的 svg
-                let svg_file = data_file.replace(".json", ".svg");
-                seattable_dir().join(&svg_file)
-            } else {
-                seattable_preview_dir().join(&preview_file)
-            };
-
-            let data_file_exists = data_path.exists();
-            let preview_file_exists = preview_path.exists();
-
-            let decoded_name =
-                general_purpose::STANDARD
-                    .decode(&encoded_name)
-                    .ok()
-                    .and_then(|b| String::from_utf8(b).ok());
-            let name = decoded_name.clone().unwrap_or_else(|| encoded_name.clone());
-
-            let preview_svg = if preview_file_exists {
-                fs::read_to_string(&preview_path).ok()
-            } else {
-                None
-            };
-
-            let is_broken = !data_file_exists || decoded_name.is_none();
-            let problem_message = if is_broken {
-                Some("此座位表数据存在问题".to_string())
-            } else {
-                None
-            };
-
-            Ok(DashboardRecord {
-                sgid,
-                name,
-                create_time,
-                data_file,
-                preview_file: preview_path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_default(),
-                data_file_exists,
-                preview_file_exists,
-                is_broken,
-                problem_message,
-                preview_svg,
-            })
-        })
-        .map_err(|err| err.to_string())?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|err| err.to_string())?;
-
-    Ok(records)
-}
-
 /// 删除座位表记录及对应文件
 #[tauri::command]
 pub fn delete_seat_table(sgid: String) -> Result<(), String> {
@@ -299,11 +219,6 @@ pub fn delete_seat_table(sgid: String) -> Result<(), String> {
     if !preview_file.is_empty() {
         let preview_path = seattable_preview_dir().join(&preview_file);
         let _ = fs::remove_file(&preview_path);
-    } else {
-        // 兼容旧数据：尝试从 seattable 目录删除
-        let svg_filename = filename.replace(".json", ".svg");
-        let svg_path = seattable_dir().join(&svg_filename);
-        let _ = fs::remove_file(&svg_path);
     }
 
     // 删除数据库记录

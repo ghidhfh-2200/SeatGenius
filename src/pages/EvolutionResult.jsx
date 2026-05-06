@@ -85,25 +85,36 @@ const EvolutionResult = () => {
     // 直接 DOM 操作：高亮/取消高亮 SVG 中的座位
     const highlightSeat = useCallback((seatId) => {
         const svg = svgRef.current;
-        if (!svg) return;
+        // 清除之前的高亮（先在 svg 中查找）
+        const removeHighlightFrom = (root, id) => {
+            if (!root) return 0;
+            const prevEls = root.querySelectorAll(`[data-seat-id="${id}"]`);
+            prevEls.forEach((el) => el.classList.remove('seat-highlighted'));
+            return prevEls.length;
+        };
 
-        // 清除之前的高亮
         if (prevHoveredSeatRef.current) {
-            const prevEls = svg.querySelectorAll(`[data-seat-id="${prevHoveredSeatRef.current}"]`);
-            prevEls.forEach((el) => {
-                el.classList.remove('seat-highlighted');
-            });
+            // try svg first, then document
+            const removed = removeHighlightFrom(svg, prevHoveredSeatRef.current) + removeHighlightFrom(document, prevHoveredSeatRef.current);
             prevHoveredSeatRef.current = null;
         }
 
         if (!seatId) return;
 
-        // 添加新的高亮
-        const els = svg.querySelectorAll(`[data-seat-id="${seatId}"]`);
-        els.forEach((el) => {
-            el.classList.add('seat-highlighted');
-        });
-        prevHoveredSeatRef.current = seatId;
+        // 添加新的高亮，优先在 svg 内查找，找不到就全局查找（处理 Tooltip/portal 导致的 DOM 结构差异）
+        const addedInSvg = removeHighlightFrom(svg, '__noop__') || 0; // noop to ensure function exists
+        let added = 0;
+        if (svg) {
+            const els = svg.querySelectorAll(`[data-seat-id="${seatId}"]`);
+            els.forEach((el) => el.classList.add('seat-highlighted'));
+            added = els.length;
+        }
+        if (added === 0) {
+            const els = document.querySelectorAll(`[data-seat-id="${seatId}"]`);
+            els.forEach((el) => el.classList.add('seat-highlighted'));
+            added = els.length;
+        }
+        if (added > 0) prevHoveredSeatRef.current = seatId;
     }, []);
 
     const {
@@ -273,6 +284,9 @@ const EvolutionResult = () => {
 
 
     // 判断是否从 Dashboard 进入（没有 seatOrder 即为 Dashboard 来源，仅支持查看）
+    // Keep original seat ID keys so the renderer can match both numeric and string IDs.
+    const seatAssignmentsForRender = useMemo(() => editableSeatOrder || {}, [editableSeatOrder]);
+
     const fromDashboard = useMemo(() => {
         return !!(location.state?.sgid && !location.state?.seatOrder);
     }, [location.state]);
@@ -342,7 +356,8 @@ const EvolutionResult = () => {
                                                     canvasHeight: classroom.canvasHeight || FALLBACK_CONFIG.CANVAS_HEIGHT,
                                                     typeNames: TYPE_NAMES,
                                                     config: classroom.config || FALLBACK_CONFIG,
-                                                    seatAssignments: editableSeatOrder,
+                                                    seatAssignments: seatAssignmentsForRender,
+                                                    mode: classroom.mode || 'classic',
                                                 })}
                                             </svg>
                                         </div>

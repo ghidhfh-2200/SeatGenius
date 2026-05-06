@@ -201,7 +201,9 @@ const calcBigGroupLayout = (bigGroup, childSmallGroups, allElements, config) => 
         const startY = sgY + (sgH - totalRowHeight) / 2;
 
         // 获取该小组的座位
-        const seats = allElements.filter(e => e.type === 'seat' && e.parentId === sg.id);
+        const seats = Array.isArray(sg.seats) && sg.seats.length > 0
+            ? sg.seats
+            : allElements.filter(e => e.type === 'seat' && e.parentId === sg.id);
 
         const seatLayouts = seats.map((seat, row) => ({
             seat,
@@ -230,7 +232,91 @@ const calcBigGroupLayout = (bigGroup, childSmallGroups, allElements, config) => 
 };
 
 const renderSeatElements = (elements, options) => {
-    const { canvasWidth, canvasHeight, typeNames, hoveredItemId, config, seatAssignments = {} } = options;
+    const { canvasWidth, canvasHeight, typeNames, hoveredItemId, config, seatAssignments = {}, mode = 'classic' } = options;
+
+    const getAssignedStudentName = (seatId) => {
+        if (seatAssignments == null) return '空位';
+
+        if (Object.prototype.hasOwnProperty.call(seatAssignments, seatId)) {
+            const value = seatAssignments[seatId];
+            if (value !== undefined && value !== null && String(value).trim() !== '') {
+                return value;
+            }
+        }
+
+        return '空位';
+    };
+
+    // 如果是复杂模式，按元素坐标直接渲染（complex 模式的数据结构与 classic 不同）
+    if (mode === 'complex') {
+        return elements.map((item) => {
+            const size = getElementSize(item, config);
+            const fill = item.color || "#999";
+            const label = item.name || typeNames?.[item.type] || "组件";
+
+            const pos = getElementPosition(item, size, canvasWidth, canvasHeight, elements, config);
+
+            if (item.type === 'seat' || item.type === 'chair') {
+                const seatId = String(item.id);
+                const studentName = (seatAssignments && Object.prototype.hasOwnProperty.call(seatAssignments, seatId)) ? seatAssignments[seatId] : '空位';
+                const seatTooltipTitle = `座位 ID: ${seatId}\n学生姓名: ${studentName}`;
+
+                return (
+                    <g key={item.id} style={{ cursor: 'pointer' }}>
+                        <title>{seatTooltipTitle}</title>
+                        {item.type === 'chair' ? (
+                            <circle
+                                cx={pos.x}
+                                cy={pos.y}
+                                r={size.width / 2}
+                                fill={fill}
+                                stroke={"rgba(0,0,0,0.15)"}
+                                strokeWidth="1.5"
+                                data-element-id={item.id}
+                                data-element-type={item.type}
+                                data-seat-id={seatId}
+                                data-student-name={studentName}
+                            />
+                        ) : (
+                            <rect
+                                x={pos.x}
+                                y={pos.y}
+                                width={size.width}
+                                height={size.height}
+                                rx={size.rx || 4}
+                                fill={fill}
+                                stroke={"rgba(0,0,0,0.15)"}
+                                strokeWidth="1"
+                                data-element-id={item.id}
+                                data-element-type={item.type}
+                                data-seat-id={seatId}
+                                data-student-name={studentName}
+                            />
+                        )}
+                    </g>
+                );
+            }
+
+            // 其他元素（desk/platform/aisle/window等）按默认方式渲染
+            return (
+                <g key={item.id} style={{ cursor: 'pointer' }}>
+                    <title>{`${label} (ID: ${item.id})`}</title>
+                    <rect
+                        x={pos.x}
+                        y={pos.y}
+                        width={size.width}
+                        height={size.height}
+                        rx={size.rx || 4}
+                        fill={fill}
+                        stroke={"rgba(0,0,0,0.15)"}
+                        strokeWidth="1"
+                        data-element-id={item.id}
+                        data-element-type={item.type}
+                    />
+                </g>
+            );
+        });
+    }
 
     // 分离不同类型元素
     const bigGroups = elements.filter(e => e.type === 'big_group');
@@ -314,18 +400,12 @@ const renderSeatElements = (elements, options) => {
                             {sgLayout.seatLayouts.map((seatLayout) => {
                                 const seatId = String(seatLayout.seat.id);
                                 // 从映射中查找该座位的学生姓名，如果没找到则为空位
-                                const studentName = seatAssignments[seatId] || "空位";
-                                const maxCharsPerLine = Math.max(1, Math.floor(seatLayout.width / 12));
-                                const lines = wrapSeatName(studentName, maxCharsPerLine, 2);
-                                // 确保字体大小有合理的最小值
-                                const maxLineLength = Math.max(...lines.map((line) => line.length), 1);
-                                const fontSize = Math.max(7, Math.min(13, Math.min(seatLayout.width / (maxLineLength * 2.5), seatLayout.height / 4)));
-                                const lineHeight = fontSize * 1.1;
-                                const startY = seatLayout.y + seatLayout.height / 2 - ((lines.length - 1) * lineHeight) / 2;
+                                const studentName = getAssignedStudentName(seatId);
+                                const seatTooltipTitle = `座位 ID: ${seatLayout.seat.id}\n学生姓名: ${studentName}`;
 
                                 return (
                                     <g key={`seat-${seatLayout.seat.id}`} style={{ cursor: "pointer" }}>
-                                        <title>{`座位 ID: ${seatLayout.seat.id}\n学生: ${studentName}`}</title>
+                                        <title>{seatTooltipTitle}</title>
                                         <rect
                                             x={seatLayout.x}
                                             y={seatLayout.y}
@@ -340,29 +420,6 @@ const renderSeatElements = (elements, options) => {
                                             data-seat-id={seatId}
                                             data-student-name={studentName}
                                         />
-                                        <text
-                                            x={seatLayout.x + seatLayout.width / 2}
-                                            y={startY}
-                                            textAnchor="middle"
-                                            fill="#111"
-                                            fontSize={fontSize}
-                                            fontWeight="600"
-                                            paintOrder="stroke"
-                                            stroke="#fff"
-                                            strokeWidth="1.5"
-                                            data-seat-id={seatId}
-                                            data-student-name={studentName}
-                                        >
-                                            {lines.map((line, idx) => (
-                                                <tspan
-                                                    key={`${seatLayout.seat.id}-${idx}`}
-                                                    x={seatLayout.x + seatLayout.width / 2}
-                                                    dy={idx === 0 ? 0 : lineHeight}
-                                                >
-                                                    {line}
-                                                </tspan>
-                                            ))}
-                                        </text>
                                     </g>
                                 );
                             })}

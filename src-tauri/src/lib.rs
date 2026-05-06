@@ -35,6 +35,7 @@ pub fn run() {
             classroom_export::export_classroom,
             classroom_loader::load_classroom,
             dashboard_records::get_dashboard_records,
+            dashboard_records::get_seat_tables,
             database::get_default_labels,
             database::save_default_labels,
             database::delete_classroom,
@@ -48,8 +49,8 @@ pub fn run() {
             profile_manager::get_profile_list,
             profile_manager::load_profile,
             profile_manager::delete_profile,
+            profile_manager::update_profile,
             seat_table_export::export_seat_table,
-            seat_table_export::get_seat_tables,
             seat_table_export::load_seat_table,
             seat_table_export::delete_seat_table
         ])

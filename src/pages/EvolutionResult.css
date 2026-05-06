@@ -61,13 +61,15 @@
 }
 
 /* SVG 座位高亮 - 通过 JS 动态添加 class */
-.evolution-result-svg [data-seat-id].seat-highlighted {
+.evolution-result-svg [data-seat-id].seat-highlighted,
+[data-seat-id].seat-highlighted {
     fill: #e6f4ff !important;
     stroke: #1677ff !important;
     stroke-width: 1.5 !important;
 }
 
-.evolution-result-svg text[data-seat-id].seat-highlighted {
+.evolution-result-svg text[data-seat-id].seat-highlighted,
+text[data-seat-id].seat-highlighted {
     fill: #1677ff !important;
     font-weight: 300 !important;
 }

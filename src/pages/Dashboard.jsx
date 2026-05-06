@@ -15,35 +15,14 @@ const Dashboard = () => {
     const [classrooms, setClassrooms] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    const loadRecords = async () => {
-        setLoading(true);
-        try {
-            const [classroomData, seatTableData] = await Promise.all([
-                invoke('get_dashboard_records'),
-                invoke('get_seat_tables'),
-            ]);
-            const classroomRecords = Array.isArray(classroomData) ? classroomData : [];
-            const seatTableRecords = Array.isArray(seatTableData) ? seatTableData : [];
-            setClassrooms(classroomRecords);
-            setSeatTables(seatTableRecords);
-        } catch (error) {
-            console.error('读取仪表盘数据失败', error);
-            message.error('读取仪表盘数据失败：' + String(error));
-            setClassrooms([]);
-            setSeatTables([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const { handleAction, loadRecords } = React.useMemo(
+        () => createDashboardHandlers({ invoke, message, setLoading, setSeatTables, setClassrooms }),
+        [invoke, message, setLoading, setSeatTables, setClassrooms],
+    );
 
     useEffect(() => {
         loadRecords();
-    }, []);
-
-    const { handleAction } = React.useMemo(
-        () => createDashboardHandlers({ invoke, message, setLoading, setSeatTables, setClassrooms }),
-        [invoke, message],
-    );
+    }, [loadRecords]);
 
     const openClassroom = (record) => {
         navigate('/new-classroom', { state: { sgid: record.sgid } });
